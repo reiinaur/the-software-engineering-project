@@ -8,7 +8,7 @@ export default class menuScene extends Phaser.Scene {
   create() {
     this.add.text(400, 150, "THE TYPING TIMES", { fontSize: "42px", fill: "#fff" }).setOrigin(0.5);
 
-    // Create a text button for Login
+    // login button
     const logIn = this.add.text(400, 300, "- login", { fontSize: "28px", fill: "#ffffff", cursor: "pointer" }).setOrigin(0.5);
     logIn.setInteractive({ useHandCursor: true });
     logIn.on("pointerdown", () => {
