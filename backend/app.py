@@ -3,7 +3,7 @@ import click
 from flask import Flask, jsonify
 from flask_cors import CORS
 from models import db
-from routes import auth
+from routes.auth import auth
 
 def create_app():
     app = Flask(__name__) # creates app instance
@@ -11,11 +11,6 @@ def create_app():
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///users.db"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     CORS(app, resources={r"/api/*": {"origins": "*"}})
-
-    try:
-        os.makedirs(app.database_path)
-    except OSError:
-        pass
 
     db.init_app(app)
     app.register_blueprint(auth)

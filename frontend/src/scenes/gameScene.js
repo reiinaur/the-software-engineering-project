@@ -7,7 +7,7 @@ export default class gameScene extends Phaser.Scene {
   }
 
   create() {
-    this.add.text(400, 100, "🎉 Logged In Securely! 🎉", { fontSize: "36px", fill: "#00ff00" }).setOrigin(0.5);
+    this.add.text(400, 100, "Logged In Securely!", { fontSize: "36px", fill: "#00ff00" }).setOrigin(0.5);
 
     // Fetch and display data inside the authenticated dashboard environment
     this.loadUserData();

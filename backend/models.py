@@ -21,8 +21,8 @@ class User(db.Model):
 # playerStats table
 class playerStats(db.Model):
     __tablename__ = 'playerStats'
-    rankLevel = mapped_column()
-    xpTotal = mapped_column()
-    coinBalance = mapped_column()
-    finLevels = mapped_column()
+    rankLevel = mapped_column(db.Integer(5), default=1, nullable=False)
+    xpTotal = mapped_column(db.Integer,nullable=False)
+    coinBalance = mapped_column(db.Integer,nullable=False)
+    finLevels = mapped_column(db.Integer,nullable=False)
 

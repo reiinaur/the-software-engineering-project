@@ -4,7 +4,7 @@ import bcrypt
 import jwt
 import datetime
 from functools import wraps
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, app
 from models import db, User
 
 auth = Blueprint('auth', __name__)
@@ -28,10 +28,10 @@ def signUp():
         return jsonify({"message": "Missing request body"}), 400
 
     name = data.get('name')
-    userName = data.get("Username: ")
-    userEmail = data.get("Email: ")
-    passInput = data.get("Password: ")
-    confirmPass = data.get("Confirm password: ")
+    userName = data.get('username')
+    userEmail = data.get('email')
+    passInput = data.get('password')
+    confirmPass = data.get('confirmPass')
 
     email_validate_pattern = r"^\S+@\S+\.\S+$"
     if not re.match(email_validate_pattern, userEmail):
@@ -46,11 +46,13 @@ def signUp():
 
     try:
         new_user = User(
-            userId = uuid.uuid4()
-            name=name
-            userName=userName
-            userEmail=userEmail
-            userPass=userPass
+            userId = uuid.uuid4(),
+            name=name,
+            userName=userName,
+            userEmail=userEmail,
+            userPass=userPass,
+            role='player',
+            authToken=''
         )
         db.session.add(new_user)
         db.session.commit()
@@ -71,7 +73,7 @@ def logIn():
         token = jwt.encode({
             'user_id': user.userId, 
             'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=2)
-        }, current_app.config['SECRET_KEY'], algorithm="HS256")
+        }, app.config['SECRET_KEY'], algorithm="HS256")
         
         return jsonify({'token': token, 'status': 'success'})
     
