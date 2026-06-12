@@ -3,7 +3,7 @@ import { resolve } from 'path';
 
 export default defineConfig({
   server: {
-    port: 5173, // Matches your browser screenshot
+    port: 5173,
   },
   build: {
     rollupOptions: {

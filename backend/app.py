@@ -3,7 +3,11 @@ import click
 from flask import Flask, jsonify
 from flask_cors import CORS
 from models import db
+
 from routes.auth import auth
+from routes.stats import stats
+from routes.shop import shop
+from routes.vocab import vocab
 
 def create_app():
     app = Flask(__name__) # creates app instance
@@ -14,19 +18,9 @@ def create_app():
 
     db.init_app(app)
     app.register_blueprint(auth)
-    @app.cli.add_command(click.Command('init-db', callback=lambda: db.create_all() or click.echo('Database created.')))
-
-    @app.route('/api/users', methods=['GET'])
-    def get_data():
-        return jsonify(
-            {
-                "users": [
-                    "john doe",
-                    "yo gurt"
-                ]
-            }
-        )
-
+    app.register_blueprint(stats)
+    app.register_blueprint(shop)
+    app.register_blueprint(vocab)
     return app
 
 if __name__ == "__main__":
