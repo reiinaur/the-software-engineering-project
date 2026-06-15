@@ -1,0 +1,20 @@
+{
+  "passages": [
+    {
+      "title": "OOP — Encapsulation",
+      "text": "Encapsulation is the bundling of data and the methods that operate on that data within a single unit called a class. It restricts direct access to an object's internal state and prevents unintended interference or misuse of the data."
+    },
+    {
+      "title": "OOP — Inheritance",
+      "text": "Inheritance allows a class to acquire the properties and methods of another class. The child class extends the parent class and can override inherited methods to provide specialised behaviour while reusing existing code."
+    },
+    {
+      "title": "Algorithms",
+      "text": "An algorithm is a finite sequence of well-defined instructions that solves a computational problem. Algorithms are evaluated on their time complexity and space complexity to determine their efficiency at scale."
+    },
+    {
+      "title": "Data Structures",
+      "text": "A data structure is a way of organising and storing data so it can be accessed and modified efficiently. Common structures include arrays, linked lists, stacks, queues, trees, and hash tables."
+    }
+  ]
+}

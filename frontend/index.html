@@ -2,12 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#1a1a2e" />
+    <link rel="icon" type="image/png" href="./src/assets/favicon.png" />
     <title>The Typing Times</title>
-    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
-    <script type="module" src="./src/main.js"></script> 
+    <div id="game-container"></div> <!-- container for phaser to display game -->
+    <script type="module" src="./src/main.js"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js")
+            .then((reg) => console.log("[SW] Registered:", reg.scope))
+            .catch((err) => console.error("[SW] Failed:", err));
+        });
+      }
+    </script>
   </body>
 </html>

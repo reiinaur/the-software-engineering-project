@@ -1,4 +1,5 @@
 import datetime
+import re
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import ForeignKey, String, Integer, Float, Boolean, DateTime, JSON
 from sqlalchemy.orm import DeclarativeBase, mapped_column, validates
@@ -6,21 +7,22 @@ from sqlalchemy.orm import DeclarativeBase, mapped_column, validates
 class Base(DeclarativeBase):
     pass
 
-# users table (used for auth)
 db = SQLAlchemy(model_class=Base)
+
+# users table (used for auth)
 class User(db.Model):
     __tablename__ = 'users'
     userId = mapped_column(String, primary_key=True, unique=True, nullable=False)
     name = mapped_column(String(50), nullable=False)
     userEmail = mapped_column(String, unique=True, nullable=False)
     userName = mapped_column(String, unique=True, nullable=False)
-    userPass = mapped_column(String, nullable=False) # Stores the secure bcrypt hash string
-    role = mapped_column(String, nullable=False, default="player") # Value constraints: 'player' or 'admin'
-    authToken = mapped_column(String, unique=True, nullable=True, default=None) # Nullable till login
+    userPass = mapped_column(String, nullable=False) # stores the secure bcrypt hash string
+    role = mapped_column(String, nullable=False, default="player") # constraints: 'player' or 'admin'
+    authToken = mapped_column(String, unique=True, nullable=True, default=None) # nullable until login
     createdAt = mapped_column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     @validates('userEmail')
-    def validate_email(self, key, address):
+    def validate_email(self, key, address):  
         if not re.match(r"^\S+@\S+\.\S+$", address):
             raise ValueError(f"Database write rejected: '{address}' is not a valid email format.")
         return address
@@ -36,7 +38,7 @@ class User(db.Model):
 class playerStats(db.Model):
     __tablename__ = 'playerStats'
     userId = mapped_column(String, ForeignKey('users.userId', ondelete='CASCADE'), primary_key=True, nullable=False)
-    rankLevel = mapped_column(Integer, default=1, nullable=False) # Expected range constraints: 1 to 5 inclusive
+    rankLevel = mapped_column(Integer, default=1, nullable=False) # expected range constraints: 1 to 5 inclusive
     xpTotal = mapped_column(Integer, default=0, nullable=False)
     coinBalance = mapped_column(Integer, default=0, nullable=False)
     finLevels = mapped_column(JSON, default=lambda: [], nullable=False)

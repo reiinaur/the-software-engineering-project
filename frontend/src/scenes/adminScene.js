@@ -1,109 +1,130 @@
+// REWRITTEN: your original adminScene was a copy of the login form.
+// This is the actual vocab editor — lets admins add words to topics.
+// Accessible only when gameState.role === 'admin'.
+ 
 import Phaser from "phaser";
 import axios from "axios";
-
+import { authHeader } from "../utils/auth.js";
+import { gameState } from "../utils/gameState.js";
+ 
 export default class adminScene extends Phaser.Scene {
   constructor() {
     super("adminScene");
   }
-
-  create(adminVocabEditor) {
-    // vocab form template layout block
-    const vocabFormHTML = `
-      <div style="text-align: center; font-family: Arial; color: white;">
-        <input type="text" id="name" placeholder="name" style="padding: 10px; width: 220px; margin-bottom: 10px;"><br/>
-        <input type="text" id="userName" placeholder="userName" style="padding: 10px; width: 220px; margin-bottom: 10px;"><br/>
-        <input type="text" id="userEmail" placeholder="userEmail" style="padding: 10px; width: 220px; margin-bottom: 10px;"><br/>
-        <input type="password" id="passInput" placeholder="passInput" style="padding: 10px; width: 220px; margin-bottom: 15px;"><br/>
-        <input type="password" id="confirmPass" placeholder="confirmPassword" style="padding: 10px; width: 220px; margin-bottom: 15px;"><br/>
-        <button id="submit" style="padding: 10px 20px; background: #28a745; color: white; border: none; font-size: 16px; cursor: pointer;">
-          ${isLogin ? 'Sign In' : 'Register User'}
-        </button><br/><br/>
-        <span id="returnButton" style="color: #aaa; cursor: pointer; text-decoration: underline;">Go Back</span>
+ 
+  async create() {
+    const W = this.scale.width;
+ 
+    // Belt-and-suspenders: redirect if non-admin somehow reaches this scene.
+    // The server also enforces this via @admin_required, but checking early
+    // saves an unnecessary network round trip.
+    if (gameState.role !== 'admin') {
+      this.scene.start("menuScene");
+      return;
+    }
+ 
+    this.add.text(W / 2, 38, "ADMIN — VOCAB EDITOR", {
+      fontSize: "26px", fill: "#e94560", fontStyle: "bold"
+    }).setOrigin(0.5);
+ 
+    this.add.text(25, 15, "← Back", {
+      fontSize: "16px", fill: "#aaaaaa"
+    }).setInteractive({ useHandCursor: true })
+      .on("pointerdown", () => { this._cleanup(); this.scene.start("menuScene"); });
+ 
+    // Load existing topics to display a summary
+    await this._loadAndDisplayTopics();
+ 
+    // Build the "add word" form
+    const formHTML = `
+      <div style="display:flex; flex-direction:column; align-items:center;">
+        <p style="color:#aaa; font-size:13px; margin-bottom:8px;">Add word to existing topic:</p>
+        <input type="text" id="topicName" placeholder="Topic (e.g. OOP)" /><br/>
+        <input type="text" id="newWord"   placeholder="New Word (max 50 chars)" /><br/>
+        <input type="text" id="newDef"    placeholder="Definition" /><br/>
+        <button id="add-btn"  class="form-btn" style="margin-top:6px;">ADD WORD</button>
+        <button id="new-btn"  class="form-btn" style="background:#4466bb; margin-top:6px;">CREATE NEW TOPIC</button>
+        <p id="status-msg" style="font-size:14px; min-height:18px; margin-top:6px;"></p>
       </div>
     `;
-
-    const domContainer = this.add.dom(400, 320).createFromHTML(signUpFormHTML);
-
-    // Set up form submission logic
-    document.getElementById("submit").addEventListener("click", async () => {
-      const name = document.getElementById("name").value;
-      const userName = document.getElementById("userName").value;
-      const userEmail = document.getElementById("userEmail").value;
-      const passInput = document.getElementById("passInput").value;
-      const confirmPass = document.getElementById("confirmPass").value;
-
-      const payload = { username: userName, password: passWord };
-      try {
-        if (isSignUp) {
-          // Contact login endpoint
-          const res = await axios.post("http://localhost:5000/api/signup", payload);
-          localStorage.setItem("userToken", res.data.token);
-          
-          domContainer.destroy(); // Safely remove element layout before transition
-          this.scene.start("gameScene"); // Redirect inside Phaser!
-        } else {
-          // Contact registration workflow endpoint (if matching your auth.py logic later)
-          alert("Registration simulated successfully! Try logging in.");
-          this.scene.start("menuScene");
-        }
-      } catch (err) {
-        alert("Authentication challenge transaction rejected!");
-      }
-    });
-
-    // Handle back navigational elements
-    document.getElementById("returnButton").addEventListener("click", () => {
-      domContainer.destroy();
-      this.scene.start("menuScene");
-    });
+ 
+    this._dom = this.add.dom(W / 2, 430).createFromHTML(formHTML);
+ 
+    document.getElementById("add-btn").addEventListener("click",  () => this._addWord());
+    document.getElementById("new-btn").addEventListener("click",  () => this._createTopic());
   }
-
-  create(logIndata) {
-    const isLogin = data.mode === "login";
-    this.add.text(400, 100, isLogin ? "logIn" : "Log In", { fontSize: "36px", fill: "#fff" }).setOrigin(0.5);
-
-    // log in form template layout block
-    const logInFormHTML = `
-      <div style="text-align: center; font-family: Arial; color: white;">
-        <input type="text" id="userName" placeholder="Username" style="padding: 10px; width: 220px; margin-bottom: 10px;"><br/>
-        <input type="password" id="userPass" placeholder="Password" style="padding: 10px; width: 220px; margin-bottom: 15px;"><br/>
-        <button id="submit" style="padding: 10px 20px; background: #28a745; color: white; border: none; font-size: 16px; cursor: pointer;">
-          ${isLogin ? 'Sign In' : 'Register User'}
-        </button><br/><br/>
-        <span id="returnButton" style="color: #aaa; cursor: pointer; text-decoration: underline;">Go Back</span>
-      </div>
-    `;
-
-    const domContainer = this.add.dom(400, 320).createFromHTML(logInFormHTML);
-
-    // Set up form submission logic
-    document.getElementById("submit").addEventListener("click", async () => {
-      const userName = document.getElementById("userName").value;
-      const passInput = document.getElementById("passInput").value;
-
-      const payload = { username: userName, password: passInput };
-      try {
-        if (isLogin) {
-          // Contact login endpoint
-          const res = await axios.post("http://localhost:5000/api/login", payload);
-          localStorage.setItem("userToken", res.data.token);
-          
-          domContainer.destroy(); // Safely remove element layout before transition
-          this.scene.start("gameScene"); // Redirect inside Phaser!
-        } else {
-          // Contact registration workflow endpoint (if matching your auth.py logic later)
-          alert("Registration simulated successfully! Try logging in.");
-          this.scene.start("menuScene");
-        }
-      } catch (err) {
-        alert("Authentication challenge transaction rejected!");
-      }
-    });
-
-    // Handle back navigational elements
-    document.getElementById("auth-back-btn").addEventListener("click", () => {
-      domContainer.destroy();
-      this.scene.start("menuScene");
-    });
+ 
+  async _loadAndDisplayTopics() {
+    // This is the GET /api/vocab/<topic> endpoint — but we need all topics.
+    // For now, display a static label; you can extend the backend with a GET /api/vocab/all route.
+    this.add.text(400, 90, "Manage vocabulary topics below.", {
+      fontSize: "14px", fill: "#666688"
+    }).setOrigin(0.5);
+  }
+ 
+  async _addWord() {
+    const topicName  = document.getElementById("topicName")?.value.trim();
+    const newWord    = document.getElementById("newWord")?.value.trim();
+    const newDef     = document.getElementById("newDef")?.value.trim();
+    const statusEl   = document.getElementById("status-msg");
+ 
+    if (!topicName || !newWord || !newDef) {
+      statusEl.textContent = "All fields are required.";
+      statusEl.style.color = "#e94560";
+      return;
+    }
+    if (newWord.length > 50) {
+      statusEl.textContent = "Word must be 50 characters or fewer.";
+      statusEl.style.color = "#e94560";
+      return;
+    }
+ 
+    try {
+      await axios.post("/api/vocab/admin/add-word", {
+        topicName, newWord, newDefinition: newDef
+      }, { headers: authHeader() });
+ 
+      statusEl.textContent = `✓ "${newWord}" added to ${topicName}.`;
+      statusEl.style.color = "#44aa77";
+      // Clear the word/def fields but keep the topic selected for rapid entry
+      document.getElementById("newWord").value = "";
+      document.getElementById("newDef").value  = "";
+ 
+    } catch (err) {
+      statusEl.textContent = err.response?.data?.message || "Error adding word.";
+      statusEl.style.color = "#e94560";
+    }
+  }
+ 
+  async _createTopic() {
+    const topicName = document.getElementById("topicName")?.value.trim();
+    const statusEl  = document.getElementById("status-msg");
+ 
+    if (!topicName) {
+      statusEl.textContent = "Enter a topic name first.";
+      statusEl.style.color = "#e94560";
+      return;
+    }
+ 
+    try {
+      await axios.post("/api/vocab/admin/create", {
+        topicName, words: [], definitions: []
+      }, { headers: authHeader() });
+ 
+      statusEl.textContent = `✓ Topic "${topicName}" created. Now add words to it.`;
+      statusEl.style.color = "#44aa77";
+ 
+    } catch (err) {
+      statusEl.textContent = err.response?.data?.message || "Error creating topic.";
+      statusEl.style.color = "#e94560";
+    }
+  }
+ 
+  _cleanup() {
+    if (this._dom) this._dom.destroy();
+  }
+ 
+  shutdown() {
+    this._cleanup();
   }
 }

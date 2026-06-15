@@ -1,0 +1,28 @@
+{
+  "name": "The Typing Times",
+  "short_name": "Typing Times",
+  "description": "A typing tutor game set in a newspaper agency. Type passages before the deadline!",
+  "start_url": "/",
+  "scope": "/",
+
+  "display": "standalone",
+  "orientation": "landscape",
+
+  "background_color": "#ffffff",
+  "theme_color": "#1a1a2e",
+
+  "icons": [
+    {
+      "src": "./src/assets/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+
+  "screenshots": [],
+
+  "categories": ["games", "education"],
+
+  "lang": "en-AU"
+}

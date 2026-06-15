@@ -1,0 +1,16 @@
+{
+  "passages": [
+    {
+      "title": "Variables",
+      "text": "A variable is a named storage location in memory that holds a value. Variables can store numbers, text, or other data types depending on the programming language being used."
+    },
+    {
+      "title": "Functions",
+      "text": "A function is a reusable block of code that performs a specific task. Functions accept inputs called parameters and can return an output value to the caller when the task is complete."
+    },
+    {
+      "title": "Loops",
+      "text": "A loop repeats a block of code while a condition remains true. For loops iterate a set number of times while while loops continue until the condition becomes false."
+    }
+  ]
+}
