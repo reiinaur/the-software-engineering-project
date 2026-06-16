@@ -1,101 +1,123 @@
 import Phaser from "phaser";
 import axios from "axios";
+import { GW, GH, CX, CY, FONT, COLORS, HEX, px, py } from "../utils/scale.js";
 import { authHeader } from "../utils/auth.js";
 import { gameState } from "../utils/gameState.js";
- 
+import { renderMascot } from "../utils/shopUtils.js";
+
+// ⚠️ Adjust these after measuring your background:
+const TUTORIAL_BTN_X  = px(15);    // centre of drawn tutorial button
+const TUTORIAL_BTN_Y  = py(82);
+const TUTORIAL_BTN_W  = px(22);
+const TUTORIAL_BTN_H  = py(8);
+
+// centre X of each card (adjust spacing to match your drawn card slots):
+const LEVEL_CARD_Y = py(50);
+const LEVEL_CARD_W = px(13);
+const LEVEL_CARD_H = py(38);
+const LEVEL_CARDS_START_X = px(15);  // centre x of the first card
+const LEVEL_CARD_GAP      = px(17);  // gap between card centres
+
+// status text position (below cards)
+const STATUS_X = CX;
+const STATUS_Y = py(80);
+
 export default class levelSelectScene extends Phaser.Scene {
-  constructor() {
-    super("levelSelectScene");
-  }
- 
+  constructor() { super("levelSelectScene"); }
+
   create() {
-    this.add.text(400, 55, "SELECT ASSIGNMENT", {
-      fontSize: "30px", fill: "#e94560", fontStyle: "bold"
+    this.cameras.main.setBackgroundColor("#ffffff");
+    this.add.image(CX, CY, "ui-level-select-bg");
+
+    // ── Tutorial button ─────────────────────────────────────────────
+    // Uses the hand-drawn button image positioned over your layout.
+    // The image is placed at the measured coordinates, then a hit zone sits on it.
+    const tutBtn = this.add.image(TUTORIAL_BTN_X, TUTORIAL_BTN_Y, "btn-start-tutorial")
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true });
+    tutBtn.on("pointerover",  () => tutBtn.setAlpha(0.8));
+    tutBtn.on("pointerout",   () => tutBtn.setAlpha(1));
+    tutBtn.on("pointerdown",  () => this.scene.start("tutorialScene"));
+
+    // ── Level cards ────────────────────────────────────────────────
+    this._statusText = this.add.text(STATUS_X, STATUS_Y, "", {
+      fontFamily: "'Roboto Mono', monospace", fontSize: FONT.sm, color: COLORS.accent
     }).setOrigin(0.5);
- 
-    this.add.text(400, 100, `Rank ${gameState.rankLevel}  ·  ${gameState.xpTotal} XP  ·  ${gameState.coinBalance} coins`, {
-      fontSize: "16px", fill: "#aaaaaa"
-    }).setOrigin(0.5);
- 
-    // Draw 5 level cards spaced horizontally
-    const startX = 110;
-    const gapX   = 145;
+
     for (let i = 1; i <= 5; i++) {
-      this._drawCard(i, startX + (i - 1) * gapX, 320);
+      this._drawCard(i, LEVEL_CARDS_START_X + (i - 1) * LEVEL_CARD_GAP, LEVEL_CARD_Y);
     }
- 
-    // Status text — shows "Loading..." while fetching from Flask
-    this._statusText = this.add.text(400, 540, "", {
-      fontSize: "16px", fill: "#e94560"
-    }).setOrigin(0.5);
- 
-    this.add.text(40, 20, "← Back", {
-      fontSize: "16px", fill: "#aaaaaa"
-    }).setInteractive({ useHandCursor: true })
-      .on("pointerdown", () => this.scene.start("menuScene"));
+
+    // Back arrow / button — either a hit area over your drawn back button,
+    // or a programmatic button if your background doesn't include one
+    this.add.text(px(3), py(5), "←", {
+      fontFamily: "Arial", fontSize: FONT.lg, color: COLORS.dark
+    }).setInteractive({ useHandCursor: true }).on("pointerdown", () => this.scene.start("menuScene"));
   }
- 
+
   _drawCard(levelNum, x, y) {
-    // A level is accessible only if the player's rankLevel >= that level number.
-    // This mirrors the rank gate in loadLevel() pseudocode and the Flask route.
     const unlocked = gameState.rankLevel >= levelNum;
     const pb       = gameState.PBs?.[String(levelNum)];
- 
-    // Card background
-    const cardBg = this.add.rectangle(x, y, 130, 220,
-      unlocked ? 0x2a2a4a : 0x1e1e30
-    ).setStrokeStyle(2, unlocked ? 0xe94560 : 0x444444);
- 
-    this.add.text(x, y - 80, `LEVEL ${levelNum}`, {
-      fontSize: "14px",
-      fill: unlocked ? "#ffffff" : "#555555",
-      fontStyle: "bold",
-    }).setOrigin(0.5);
- 
+
+    const gfx = this.add.graphics();
+
     if (unlocked) {
-      // Show personal best if one exists for this level
-      this.add.text(x, y + 20, pb ? `PB: ${pb} WPM` : "Not played", {
-        fontSize: "13px", fill: "#aaaaaa", align: "center"
-      }).setOrigin(0.5);
- 
-      // Make clickable
-      cardBg.setInteractive({ useHandCursor: true });
-      cardBg.on("pointerover",  () => cardBg.setFillStyle(0x3a3a6a));
-      cardBg.on("pointerout",   () => cardBg.setFillStyle(0x2a2a4a));
-      cardBg.on("pointerdown",  () => this._selectLevel(levelNum));
- 
-      this.add.text(x, y + 70, "PLAY →", {
-        fontSize: "14px", fill: "#e94560"
-      }).setOrigin(0.5);
- 
+      // Unlocked card: transparent fill with accent border
+      gfx.lineStyle(3, HEX.accent);
+      gfx.strokeRoundedRect(x - LEVEL_CARD_W / 2, y - LEVEL_CARD_H / 2,
+                            LEVEL_CARD_W, LEVEL_CARD_H, 12);
+
+      // "LEVEL N" label (only if your background doesn't already show it)
+      this.add.text(x, y - LEVEL_CARD_H / 2 + py(3), `LEVEL ${levelNum}`, {
+        fontFamily: "'Roboto Mono', monospace", fontSize: FONT.sm,
+        color: COLORS.dark, fontStyle: "bold"
+      }).setOrigin(0.5, 0);
+
+      if (pb) {
+        this.add.text(x, y + py(6), `PB: ${pb} WPM`, {
+          fontFamily: "'Roboto Mono', monospace", fontSize: FONT.xs, color: COLORS.muted
+        }).setOrigin(0.5);
+      }
+
+      // Make the whole card area clickable
+      const hit = this.add.zone(x, y, LEVEL_CARD_W, LEVEL_CARD_H)
+        .setInteractive({ useHandCursor: true });
+
+      hit.on("pointerover",  () => { gfx.clear(); gfx.lineStyle(4, HEX.accent); gfx.strokeRoundedRect(x - LEVEL_CARD_W/2, y - LEVEL_CARD_H/2, LEVEL_CARD_W, LEVEL_CARD_H, 12); });
+      hit.on("pointerout",   () => { gfx.clear(); gfx.lineStyle(3, HEX.accent); gfx.strokeRoundedRect(x - LEVEL_CARD_W/2, y - LEVEL_CARD_H/2, LEVEL_CARD_W, LEVEL_CARD_H, 12); });
+      hit.on("pointerdown",  () => this._loadLevel(levelNum));
+
     } else {
-      this.add.text(x, y, "🔒", { fontSize: "28px" }).setOrigin(0.5);
-      this.add.text(x, y + 50, `Rank ${levelNum}\nRequired`, {
-        fontSize: "12px", fill: "#555555", align: "center"
+      // Locked card: dimmed border, lock emoji
+      gfx.lineStyle(2, HEX.muted);
+      gfx.strokeRoundedRect(x - LEVEL_CARD_W / 2, y - LEVEL_CARD_H / 2,
+                            LEVEL_CARD_W, LEVEL_CARD_H, 12);
+
+      this.add.text(x, y - LEVEL_CARD_H / 2 + py(3), `LEVEL ${levelNum}`, {
+        fontFamily: "'Roboto Mono', monospace", fontSize: FONT.sm, color: COLORS.muted
+      }).setOrigin(0.5, 0);
+
+      this.add.text(x, y, "🔒", { fontSize: "48px" }).setOrigin(0.5);
+
+      this.add.text(x, y + py(8), `Rank ${levelNum} required`, {
+        fontFamily: "Arial", fontSize: FONT.xs, color: COLORS.muted
       }).setOrigin(0.5);
     }
   }
- 
-  async _selectLevel(levelNum) {
+
+  async _loadLevel(levelNum) {
     this._statusText.setText("Loading assignment...");
- 
     try {
-      // Fetch passage from Flask. The authHeader() includes the JWT token.
-      const res = await axios.get(`/api/levels/${levelNum}`, {
-        headers: authHeader(),
+      const res = await axios.get(`/api/levels/${levelNum}`, { headers: authHeader() });
+      Object.assign(gameState, {
+        selectedLevel: levelNum,
+        passage:       res.data.passage,
+        articleTitle:  res.data.title,
+        timerDuration: res.data.timerDuration,
       });
- 
-      // Write level data to the shared gameState so gameScene can read it
-      gameState.selectedLevel  = levelNum;
-      gameState.passage        = res.data.passage;
-      gameState.articleTitle   = res.data.title;
-      gameState.timerDuration  = res.data.timerDuration;
- 
       this.scene.start("gameScene");
- 
     } catch (err) {
-      const msg = err.response?.data?.message || "Failed to load level.";
-      this._statusText.setText(msg);
+      this._statusText.setText(err.response?.data?.message || "Failed to load level.");
     }
   }
 }

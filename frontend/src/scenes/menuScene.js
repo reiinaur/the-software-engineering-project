@@ -1,22 +1,11 @@
-// Shows the full pattern for using scale.js constants.
-// Every other scene follows the same approach — swap raw numbers
-// for GW/GH/FONT/HEX references from scale.js.
-
 import Phaser from "phaser";
-import { isLoggedIn, getUser, getStats, clearSession } from "../utils/auth.js";
 import { GW, GH, CX, CY, FONT, COLORS, HEX, px, py } from "../utils/scale.js";
+import { isLoggedIn, getUser, getStats, getShopState, clearSession } from "../utils/auth.js";
 import { gameState } from "../utils/gameState.js";
+import { applyTheme, renderMascot } from "../utils/shopUtils.js";
 
 export default class menuScene extends Phaser.Scene {
   constructor() { super("menuScene"); }
-
-  preload() {
-    this.load.spritesheet("background", "./src/assets/bgSheet.png", {
-      frameWidth: 1920,
-      frameHeight: 1080
-    });
-    this.load.image("logo", "./src/assets/logo.png");
-  }
 
   create() {
    
@@ -24,24 +13,22 @@ export default class menuScene extends Phaser.Scene {
       this.anims.create({
         key: "bg_animation",
         frames: this.anims.generateFrameNumbers("background", { start: 0, end: 11 }), // Change 11 to your total frames minus 1
-        frameRate: 5, // Frames per second speed
-        repeat: -1     // Loop infinitely
+        frameRate: 5, 
+        repeat: -1     
       });
     }
 
-    // 2. Add as a sprite instead of an image and play it
     const bg = this.add.sprite(0, 0, "background").setOrigin(0, 0);
     bg.setDisplaySize(GW, GH); 
     bg.play("bg_animation");
 
-    // 2. Scale the logo down and position it cleanly using viewport percentages
     const logo = this.add.image(px(6), py(10), "logo").setOrigin(0, 0);
     logo.setScale(0.23);
 
-    // ── Repopulate gameState from localStorage on page load ───────
     if (isLoggedIn()) {``
       const user  = getUser();
       const stats = getStats();
+      const shop  = getShopState();
       Object.assign(gameState, {
         userId:      user.userId,
         name:        user.name,
@@ -50,17 +37,17 @@ export default class menuScene extends Phaser.Scene {
         xpTotal:     stats.xpTotal,
         coinBalance: stats.coinBalance,
         finLevels:   stats.finLevels,
-        PBs:         stats.PBs,
+        PBs:         stats.PBs,shopOwned:    shop.owned    ?? { accessories: [], decor: [], screenTheme: [] },
+        shopEquipped: shop.equipped ?? { accessories: null, decor: null, screenTheme: null },
       });
-      this._drawLoggedInUI();
+      this._drawLoggedInUI(theme);
     } else {
-      this._drawLoggedOutUI();
+      this._drawLoggedOutUI(theme);
     }
   }
 
   _drawLoggedOutUI() {
     this._item(px(9), py(50), "- start new", () => this.scene.start("loginScene", { mode: "signup" }));
-    this._item(px(9), py(59), "- settings",  () => this.scene.start("settingsScene"));
     this._item(px(9), py(68), "- login",     () => this.scene.start("loginScene", { mode: "login" }));
   }
 

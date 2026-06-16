@@ -2,6 +2,7 @@
   "passages": [
     {
       "title": "Variables",
+      "topic" : "",
       "text": "A variable is a named storage location in memory that holds a value. Variables can store numbers, text, or other data types depending on the programming language being used."
     },
     {

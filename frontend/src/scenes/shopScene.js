@@ -1,242 +1,225 @@
-// Same ShopScene from the previous guide — adapted to use axios and authHeader()
-// instead of fetch(), to match the rest of your codebase.
- 
 import Phaser from "phaser";
 import axios from "axios";
-import { authHeader, getStats, updateStats } from "../utils/auth.js";
+import { GW, GH, CX, CY, FONT, COLORS, HEX, px, py } from "../utils/scale.js";
+import { authHeader, getStats, updateStats, getShopState, updateShopState } from "../utils/auth.js";
 import { gameState } from "../utils/gameState.js";
- 
-const CATALOGUE = {
-  accessories: [
-    { id: "sillyHat",     label: "Silly Hat",     cost: 80  },
-    { id: "detectiveCap", label: "Detective Cap", cost: 120 },
-    { id: "googlyEyes",   label: "Googly Eyes",   cost: 60  },
-  ],
-  colours: [
-    { id: "blue", label: "Blue Ink", cost: 50 },
-    { id: "red",  label: "Red Ink",  cost: 50 },
-  ],
-  decor: [
-    { id: "coffeeCup", label: "Coffee Cup",  cost: 40 },
-    { id: "plant1",    label: "Desk Plant",  cost: 40 },
-  ],
-  screenTheme: [
-    { id: "matchaGreen", label: "Matcha Green", cost: 100 },
-    { id: "dustyDark",   label: "Dusty Dark",   cost: 100 },
-  ],
+import { CATALOGUE, TAB_LABELS, EQUIP_FIELD } from "../utils/shopUtils.js";
+
+// Tab positions (⚠️ adjust to your drawn background's tab positions)
+const TAB_Y    = py(13);
+const TABS_DEF = {
+  accessories: { x: px(28), w: px(20), h: py(6) },
+  screenTheme: { x: px(52), w: px(20), h: py(6) },
 };
- 
-const TAB_LABELS = {
-  accessories: "ACCESSORIES",
-  colours:     "COLOURS",
-  decor:       "DECOR",
-  screenTheme: "THEMES",
-};
- 
+// Item grid area
+const GRID_X     = px(5);
+const GRID_Y     = py(21);
+const GRID_W     = GW - px(10);
+const COLS       = 4;
+const ITEM_GAP   = px(1.5);
+const CARD_W     = (GRID_W - ITEM_GAP * (COLS - 1)) / COLS;
+const CARD_H     = py(38);
+
+// Coin balance display (⚠️ position to match your drawn label area)
+const COIN_X = px(82);
+const COIN_Y = py(6);
+
 export default class shopScene extends Phaser.Scene {
   constructor() { super("shopScene"); }
- 
+
   create() {
-    this.W = this.scale.width;
-    this.H = this.scale.height;
- 
-    this._activeCategory = "accessories";
-    // Local copies of ownership data — avoids querying the server on every render
-    this._owned    = {};
-    this._equipped = {};
- 
-    this._drawBackground();
-    this._drawHeader();
-    this._drawTabs();
-    this._drawGrid();
+    this._activeTab = "accessories";
+    this._objects   = [];
+    this._draw();
   }
- 
-  _drawBackground() {
-    this.add.rectangle(this.W / 2, this.H / 2, this.W, this.H, 0x1a1a2e);
-  }
- 
-  _drawHeader() {
-    this.add.text(this.W / 2, 38, "NEWSROOM SHOP", {
-      fontSize: "28px", fill: "#e94560", fontStyle: "bold"
-    }).setOrigin(0.5);
- 
-    this._coinText = this.add.text(this.W - 20, 15,
+
+  _draw() {
+    this._objects.forEach((o) => o?.destroy());
+    this._objects = [];
+    this.cameras.main.setBackgroundColor("#ffffff");
+
+    // ── Background ─────────────────────────────────────────────────
+    this._track(this.add.image(CX, CY, "ui-shop-bg"));
+
+    // ── Close button (top right — may already be drawn in bg) ──────
+    const close = this._track(this.add.text(GW - 30, 36, "×", {
+      fontFamily: "Arial", fontSize: FONT.lg, color: COLORS.dark
+    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true }));
+    close.on("pointerdown", () => this.scene.start("menuScene"));
+
+    // ── Back ───────────────────────────────────────────────────────
+    const back = this._track(this.add.text(30, 36, "←", {
+      fontFamily: "Arial", fontSize: FONT.lg, color: COLORS.dark
+    }).setInteractive({ useHandCursor: true }));
+    back.on("pointerdown", () => this.scene.start("menuScene"));
+
+    // ── Coin balance ───────────────────────────────────────────────
+    this._coinText = this._track(this.add.text(COIN_X, COIN_Y,
       `💰 ${gameState.coinBalance}`, {
-      fontSize: "18px", fill: "#ffaa00"
-    }).setOrigin(1, 0);
- 
-    this.add.text(25, 15, "← Back", {
-      fontSize: "16px", fill: "#aaaaaa"
-    }).setInteractive({ useHandCursor: true })
-      .on("pointerdown", () => this.scene.start("menuScene"));
-  }
- 
-  _drawTabs() {
-    if (this._tabObjs) this._tabObjs.forEach(o => o.destroy());
-    this._tabObjs = [];
- 
-    const cats    = Object.keys(CATALOGUE);
-    const tabW    = 148;
-    const startX  = this.W / 2 - (cats.length * tabW) / 2 + tabW / 2;
-    const tabY    = 88;
- 
-    cats.forEach((cat, i) => {
-      const isActive = cat === this._activeCategory;
-      const x = startX + i * tabW;
- 
-      const bg = this.add.rectangle(x, tabY, tabW - 6, 32,
-        isActive ? 0xe94560 : 0x2a2a4a
-      ).setInteractive({ useHandCursor: true });
- 
-      const lbl = this.add.text(x, tabY, TAB_LABELS[cat], {
-        fontSize: "13px", fill: isActive ? "#fff" : "#888888"
-      }).setOrigin(0.5);
- 
-      bg.on("pointerdown", () => {
-        this._activeCategory = cat;
-        this._drawTabs();
-        this._drawGrid();
-      });
- 
-      this._tabObjs.push(bg, lbl);
+      fontFamily: "'Roboto Mono', monospace", fontSize: FONT.sm, color: COLORS.warning
+    }).setOrigin(0.5));
+
+    // ── Tabs ───────────────────────────────────────────────────────
+    Object.entries(TABS_DEF).forEach(([cat, def]) => {
+      const isActive = cat === this._activeTab;
+      const label = this._track(this.add.text(def.x, TAB_Y, TAB_LABELS[cat], {
+        fontFamily: "Arial", fontSize: FONT.sm, fontStyle: "bold",
+        color: isActive ? COLORS.dark : COLORS.muted
+      }).setOrigin(0.5));
+
+      if (!isActive) {
+        // Invisible hit zone over the drawn tab area
+        const zone = this._track(this.add.zone(def.x, TAB_Y, def.w, def.h)
+          .setInteractive({ useHandCursor: true }));
+        zone.on("pointerdown", () => { this._activeTab = cat; this._draw(); });
+      }
+
+      // Underline active tab
+      if (isActive) {
+        const gfx = this._track(this.add.graphics());
+        gfx.lineStyle(3, HEX.dark);
+        gfx.lineBetween(def.x - def.w / 2 + 10, TAB_Y + def.h / 2,
+                        def.x + def.w / 2 - 10, TAB_Y + def.h / 2);
+      }
     });
-  }
- 
-  _drawGrid() {
-    if (this._gridObjs) this._gridObjs.forEach(o => o.destroy());
-    this._gridObjs = [];
- 
-    const items  = CATALOGUE[this._activeCategory];
-    const cardW  = 170;
-    const cardH  = 190;
-    const cols   = 4;
-    const startX = this.W / 2 - ((cols - 1) * (cardW + 14)) / 2;
-    const startY = 200;
- 
+
+    // ── Item grid ──────────────────────────────────────────────────
+    const items = CATALOGUE[this._activeTab] ?? [];
     items.forEach((item, i) => {
-      const x = startX + (i % cols)         * (cardW + 14);
-      const y = startY + Math.floor(i / cols) * (cardH + 14);
-      this._drawCard(item, x, y, cardW, cardH);
+      const col = i % COLS;
+      const row = Math.floor(i / COLS);
+      const cx  = GRID_X + CARD_W / 2 + col * (CARD_W + ITEM_GAP);
+      const cy  = GRID_Y + CARD_H / 2 + row * (CARD_H + ITEM_GAP);
+      this._drawCard(item, cx, cy);
     });
   }
- 
-  _drawCard(item, x, y, cardW, cardH) {
-    const cat        = this._activeCategory;
-    const ownedList  = this._owned[cat]    || [];
-    const equippedId = this._equipped[cat] || null;
+
+  _drawCard(item, cx, cy) {
+    const cat        = this._activeTab;
+    const ownedList  = gameState.shopOwned?.[cat]    ?? [];
+    const equippedId = gameState.shopEquipped?.[cat] ?? null;
     const isOwned    = ownedList.includes(item.id);
     const isEquipped = equippedId === item.id;
     const canAfford  = gameState.coinBalance >= item.cost;
- 
-    const bg = this.add.rectangle(x, y, cardW, cardH,
-      isEquipped ? 0x1a3a1a : isOwned ? 0x1a1a3a : 0x1e1e30
-    ).setStrokeStyle(2, isEquipped ? 0x44aa77 : isOwned ? 0x4466bb : 0x333355);
-    this._gridObjs.push(bg);
- 
-    const nameT = this.add.text(x, y - 68, item.label, {
-      fontSize: "14px", fill: "#fff", align: "center", wordWrap: { width: cardW - 16 }
-    }).setOrigin(0.5);
-    this._gridObjs.push(nameT);
- 
-    // Item preview placeholder — replace with this.add.image() once you have sprites
-    const preview = this.add.rectangle(x, y - 8, 70, 70, 0x2a2a4a)
-      .setStrokeStyle(1, 0x444466);
-    this._gridObjs.push(preview);
- 
-    if (isEquipped) {
-      const badge = this.add.text(x, y + 62, "✓ EQUIPPED", {
-        fontSize: "12px", fill: "#44aa77", fontStyle: "bold"
-      }).setOrigin(0.5);
-      this._gridObjs.push(badge);
- 
-    } else if (isOwned) {
-      const [bg2, lbl] = this._cardBtn(x, y + 62, "EQUIP", 0x4466bb, () => this._equip(item.id, cat));
-      this._gridObjs.push(bg2, lbl);
- 
+    const isFree     = item.cost === 0;
+
+    const gfx = this._track(this.add.graphics());
+    gfx.fillStyle(isEquipped ? 0xeef8ee : isOwned ? 0xeeeeff : 0xfafafa);
+    gfx.fillRoundedRect(cx - CARD_W / 2, cy - CARD_H / 2, CARD_W, CARD_H, 10);
+    gfx.lineStyle(2, isEquipped ? 0x88cc88 : isOwned ? 0x8888cc : 0xdddddd);
+    gfx.strokeRoundedRect(cx - CARD_W / 2, cy - CARD_H / 2, CARD_W, CARD_H, 10);
+
+    // Item image
+    const imgH = py(18);
+    const imgY = cy - CARD_H / 2 + imgH / 2 + 16;
+    if (item.assetKey && this.textures.exists(item.assetKey)) {
+      this._track(this.add.image(cx, imgY, item.assetKey).setDisplaySize(CARD_W - 50, imgH));
     } else {
-      const costT = this.add.text(x, y + 42, `💰 ${item.cost}`, {
-        fontSize: "14px", fill: canAfford ? "#ffaa00" : "#555555"
-      }).setOrigin(0.5);
-      this._gridObjs.push(costT);
- 
-      const [bg2, lbl] = this._cardBtn(
-        x, y + 72,
+      // Placeholder
+      gfx.fillStyle(0xe8e8e8);
+      gfx.fillRect(cx - CARD_W / 2 + 24, imgY - imgH / 2, CARD_W - 48, imgH);
+      gfx.lineStyle(1, 0xcccccc);
+      gfx.strokeRect(cx - CARD_W / 2 + 24, imgY - imgH / 2, CARD_W - 48, imgH);
+      gfx.lineBetween(cx - CARD_W/2 + 24, imgY - imgH/2, cx + CARD_W/2 - 24, imgY + imgH/2);
+      gfx.lineBetween(cx + CARD_W/2 - 24, imgY - imgH/2, cx - CARD_W/2 + 24, imgY + imgH/2);
+    }
+
+    const textY = cy - CARD_H / 2 + imgH + 30;
+    this._track(this.add.text(cx - CARD_W / 2 + 16, textY, item.label, {
+      fontFamily: "Arial", fontSize: FONT.sm, color: COLORS.dark, fontStyle: "bold"
+    }));
+    if (!isFree) {
+      this._track(this.add.text(cx + CARD_W / 2 - 16, textY, `$${item.cost}`, {
+        fontFamily: "'Roboto Mono', monospace", fontSize: FONT.xs, color: COLORS.muted
+      }).setOrigin(1, 0));
+    }
+    this._track(this.add.text(cx - CARD_W / 2 + 16, textY + 38, item.desc, {
+      fontFamily: "Arial", fontSize: "18px", color: COLORS.muted
+    }));
+
+    // Action button
+    const btnY = cy + CARD_H / 2 - py(4);
+
+    if (isEquipped) {
+      this._track(this.add.text(cx, btnY, "✓  EQUIPPED", {
+        fontFamily: "Arial", fontSize: FONT.xs, color: COLORS.success, fontStyle: "bold"
+      }).setOrigin(0.5));
+    } else if (isOwned || isFree) {
+      this._smallBtn(cx, btnY, "EQUIP", HEX.dark, () => this._equip(item.id, cat));
+    } else {
+      this._smallBtn(cx, btnY,
         canAfford ? "BUY" : "🔒",
-        canAfford ? 0xe94560 : 0x333333,
+        canAfford ? HEX.accent : HEX.muted,
         canAfford ? () => this._buy(item.id, item.cost, cat) : null
       );
-      this._gridObjs.push(bg2, lbl);
     }
   }
- 
-  async _buy(itemId, itemCost, category) {
+
+  _smallBtn(x, y, label, bgHex, cb) {
+    const bg = this._track(this.add.rectangle(x, y, px(8), py(4), bgHex)
+      .setInteractive({ useHandCursor: !!cb }));
+    const lbl = this._track(this.add.text(x, y, label, {
+      fontFamily: "Arial", fontSize: FONT.xs, color: "#ffffff"
+    }).setOrigin(0.5));
+    if (cb) {
+      bg.on("pointerover",  () => bg.setAlpha(0.8));
+      bg.on("pointerout",   () => bg.setAlpha(1));
+      bg.on("pointerdown",  cb);
+    }
+  }
+
+  async _buy(itemId, cost, cat) {
     try {
       const res = await axios.post("/api/shop/buy", {
-        category, itemId, itemCost
+        category: cat, itemId, itemCost: cost
       }, { headers: authHeader() });
- 
+
       gameState.coinBalance = res.data.coinBalance;
-      this._coinText.setText(`💰 ${gameState.coinBalance}`);
+      if (!gameState.shopOwned[cat]) gameState.shopOwned[cat] = [];
+      gameState.shopOwned[cat].push(itemId);
+
       updateStats({ ...getStats(), coinBalance: res.data.coinBalance });
- 
-      if (!this._owned[category]) this._owned[category] = [];
-      this._owned[category].push(itemId);
- 
-      this._toast("Purchase successful!", "#44aa77");
-      this._drawGrid();
- 
+      const shop = getShopState();
+      shop.owned[cat] = gameState.shopOwned[cat];
+      updateShopState(shop);
+
+      this._toast("Purchased!", COLORS.success);
+      this._draw();
     } catch (err) {
-      const msg = err.response?.data?.message || "Purchase failed.";
-      this._toast(msg, "#e94560");
+      this._toast(err.response?.data?.message || "Purchase failed.", COLORS.accent);
     }
   }
- 
-  async _equip(itemId, category) {
-    // equippedAccessories / equippedColours etc.
-    const fieldMap = {
-      accessories: "equippedAccessories",
-      colours:     "equippedColours",
-      decor:       "equippedDecor",
-      screenTheme: "equippedScreenTheme",
-    };
- 
+
+  async _equip(itemId, cat) {
     try {
       await axios.post("/api/shop/equip", {
-        category: fieldMap[category], itemId
+        category: EQUIP_FIELD[cat], itemId
       }, { headers: authHeader() });
- 
-      this._equipped[category] = itemId;
-      this._toast("Item equipped!", "#44aa77");
-      this._drawGrid();
- 
+
+      gameState.shopEquipped[cat] = itemId;
+      const shop = getShopState();
+      shop.equipped[cat] = itemId;
+      updateShopState(shop);
+
+      this._toast("Equipped!", COLORS.success);
+      this._draw();
     } catch (err) {
-      this._toast(err.response?.data?.message || "Equip failed.", "#e94560");
+      this._toast(err.response?.data?.message || "Equip failed.", COLORS.accent);
     }
   }
- 
-  _cardBtn(x, y, label, colour, callback) {
-    const bg = this.add.rectangle(x, y, 96, 28, colour)
-      .setInteractive({ useHandCursor: !!callback });
-    const lbl = this.add.text(x, y, label, { fontSize: "13px", fill: "#fff" }).setOrigin(0.5);
-    if (callback) {
-      bg.on("pointerover",  () => bg.setAlpha(0.8));
-      bg.on("pointerout",   () => bg.setAlpha(1.0));
-      bg.on("pointerdown",  callback);
-    }
-    return [bg, lbl];
-  }
- 
-  _toast(message, colour) {
+
+  _toast(msg, color) {
     if (this._toastObj) this._toastObj.destroy();
-    this._toastObj = this.add.text(this.W / 2, this.H - 40, message, {
-      fontSize: "16px", fill: colour,
-      backgroundColor: "#000000bb", padding: { x: 14, y: 7 },
-    }).setOrigin(0.5).setDepth(10);
- 
+    this._toastObj = this.add.text(CX, GH - 50, msg, {
+      fontFamily: "Arial", fontSize: FONT.sm, color,
+      backgroundColor: "#000000bb", padding: { x: 18, y: 10 }
+    }).setOrigin(0.5).setDepth(20);
     this.tweens.add({
       targets: this._toastObj, alpha: 0,
-      delay: 1200, duration: 400,
+      delay: 1400, duration: 400,
       onComplete: () => { if (this._toastObj) this._toastObj.destroy(); }
     });
   }
+
+  _track(obj) { this._objects.push(obj); return obj; }
 }
