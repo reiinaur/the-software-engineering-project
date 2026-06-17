@@ -148,18 +148,14 @@ export default class gameScene extends Phaser.Scene {
 
     // accessory overlay — rendered on top of the pigeon at the same position
     this.accessorySprite = null;
-    this.currentAcc = gameState.shopEquipped?.accessories || "none"; 
 
-    // match the assetKey from the catalogue 
-    const assetKeyMap = {
-      "none": "none-placeholder",
-      "silly-hat": "silly-hat-placeholder",
-      "crown": "crown-placeholder",
-      "top-hat": "top-hat-placeholder"
-    };
+    const validAcc = ["silly-hat", "crown", "top-hat"];
 
-    const assetBase = assetKeyMap[this.currentAcc] || `${this.currentAcc}-placeholder`;
-    const targetTexKey = `acc-${assetBase}-calm`;
+    this.currentAcc = validAcc.includes(gameState.shopEquipped?.accessories)
+      ? gameState.shopEquipped.accessories
+      : "none";
+
+    const targetTexKey = `${this.currentAcc}-calm`;
 
     if (this.currentAcc !== "none" && this.textures.exists(targetTexKey)) {
       this.accessorySprite = this.add.sprite(PIGEON_X, PIGEON_Y, targetTexKey).setScale(0.4);
