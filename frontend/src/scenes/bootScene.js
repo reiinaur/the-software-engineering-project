@@ -1,13 +1,14 @@
 import Phaser from "phaser";
 import { GW, GH, CX, FONT, colours } from "../utils/scale.js";
 
+// bootScene runs first in the scene list and preloads every asset before any other scene starts
 export default class bootScene extends Phaser.Scene {
   constructor() {
     super("bootScene");
   }
 
   preload() {
-    // bg
+    // backgrounds and UI chrome
     this.load.spritesheet("background", "./src/assets/bg-sheet.png", {
       frameWidth: 1920,
       frameHeight: 1080,
@@ -16,7 +17,7 @@ export default class bootScene extends Phaser.Scene {
     this.load.image("admin", "./src/assets/admin.png");
     this.load.image("level-select-bg", "./src/assets/level-select-bg.png");
 
-    // pigeon variants
+    // pigeon mood variants
     this.load.spritesheet("pigeon-calm", "./src/assets/pigeon-calm.png", {
       frameWidth: 1920,
       frameHeight: 1920,
@@ -46,7 +47,7 @@ export default class bootScene extends Phaser.Scene {
       },
     );
 
-    //accessory variants (silly hat)
+    // accessory variants (silly hat)
     this.load.spritesheet("silly-hat-calm", "./src/assets/silly-hat-calm.png", {
       frameWidth: 1920,
       frameHeight: 1920,
@@ -76,7 +77,7 @@ export default class bootScene extends Phaser.Scene {
       },
     );
 
-    //accessory variants (crown)
+    // accessory variants (crown)
     this.load.spritesheet("crown-calm", "./src/assets/crown-calm.png", {
       frameWidth: 1920,
       frameHeight: 1920,
@@ -124,7 +125,7 @@ export default class bootScene extends Phaser.Scene {
       },
     );
 
-    // buttons
+    // navigation and action buttons
     this.load.image("btn-start-new", "./src/assets/btn-start-new.png");
     this.load.image("btn-login", "./src/assets/btn-login.png");
     this.load.image("btn-logout", "./src/assets/btn-logout.png");
@@ -136,19 +137,19 @@ export default class bootScene extends Phaser.Scene {
     this.load.image("btn-go-home", "./src/assets/btn-go-home.png");
     this.load.image("btn-try-again", "./src/assets/btn-try-again.png");
 
-    //levels
+    // level select card images
     this.load.image("level-1", "./src/assets/level-1.png");
     this.load.image("level-2", "./src/assets/level-2.png");
     this.load.image("level-3", "./src/assets/level-3.png");
     this.load.image("level-4", "./src/assets/level-4.png");
     this.load.image("level-5", "./src/assets/level-5.png");
 
-    // game
+    // game scene assets
     this.load.image("bubble", "./src/assets/bubble.png");
     this.load.image("paper", "./src/assets/paper.png");
     this.load.image("default-typing-bg", "./src/assets/default-typing-bg.png");
 
-    //results
+    // results screen assets
     this.load.spritesheet("mission-failed", "./src/assets/mission-failed.png", {
       frameWidth: 1920,
       frameHeight: 1920,
@@ -164,7 +165,7 @@ export default class bootScene extends Phaser.Scene {
     this.load.image("failed-bg", "./src/assets/failed-bg.png");
     this.load.image("newspaper", "./src/assets/newspaper.png");
 
-    // shop
+    // shop scene assets
     this.load.image("shop-bg", "./src/assets/shop-bg.png");
     this.load.image(
       "silly-hat-placeholder",
@@ -181,13 +182,15 @@ export default class bootScene extends Phaser.Scene {
     this.load.image("cotton-candy-placeholder","./src/assets/cotton-candy-placeholder.png");
     this.load.image("forest-placeholder","./src/assets/forest-placeholder.png");
 
-    // misc assets
+    // miscellaneous UI elements
     this.load.image("login-card", "./src/assets/login-card.png");
     this.load.image("signup-card", "./src/assets/signup-card.png");
     this.load.image("icon-admin", "./src/assets/icon-admin.png");
     this.load.image("icon-lock", "./src/assets/lock.png");
-    this.load.font("custom-font", "./src/assets/custom-font.ttf", "truetype");
     this.load.image("flashcard", "./src/assets/flashcard.png");
+
+    // custom bitmap font
+    this.load.font("custom-font", "./src/assets/custom-font.ttf", "truetype");
 
     // audio
     this.load.audio("success", "./src/assets/you-did-it.mp3");
@@ -197,6 +200,7 @@ export default class bootScene extends Phaser.Scene {
   }
 
   create() {
+    // start background music then immediately start to the main menu
     this.sound.play("bgm", { loop: true, volume: 0.25 });
     this.scene.start("menuScene");
   }

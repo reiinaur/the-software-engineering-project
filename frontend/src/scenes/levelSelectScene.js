@@ -4,7 +4,7 @@ import { GW, GH, CX, CY, FONT, colours, HEX, px, py } from "../utils/scale.js";
 import { authHeader } from "../utils/auth.js";
 import { gameState } from "../utils/gameState.js";
 
-// ── Paper card positions (centre of each blank paper on the corkboard) ──────
+// centre positions and tilt angles for each paper card on the corkboard background
 const PAPER_POSITIONS = [
   { x: 360, y: 473, angle: 1   },  // level 1
   { x: 605, y: 600, angle: 7   },  // level 2
@@ -13,7 +13,7 @@ const PAPER_POSITIONS = [
   { x: 1531, y: 523, angle: 0  },  // level 5
 ];
 
-//tasks
+// display name and subtitle for each level's card
 const TASK_NAMES = [
   "Tutorial",
   "Basic Words",
@@ -44,19 +44,19 @@ export default class levelSelectScene extends Phaser.Scene {
   create() {
     this.add.image(CX, CY, "level-select-bg");
 
-    // ── Level paper cards ─────────────────────────────────────────
+    // place all five level cards onto the corkboard
     for (let i = 1; i <= 5; i++) {
       this._placeCard(i, PAPER_POSITIONS[i - 1]);
     }
 
-    // ── Status (loading indicator) ────────────────────────────────
+    // status text used as a loading indicator when fetching a level
     this._status = this.add.text(STATUS.x, STATUS.y, "", {
       fontFamily: "'custom-font', monospace",
       fontSize:   FONT.sm,
       color:      colours.main,
     }).setOrigin(0.5);
 
-    // ── Back arrow ────────────────────────────────────────────────
+    // back arrow button
     const btnBack = this.add
       .image(CX - 810, CY - 440, "btn-go-back")
       .setOrigin(0.5)
@@ -73,17 +73,17 @@ export default class levelSelectScene extends Phaser.Scene {
   }
 
   _placeCard(levelNum, pos) {
-    const unlocked = gameState.rankLevel >= levelNum;
+    const unlocked = gameState.rankLevel >= levelNum; // player must have earned this rank to play
     const pb       = gameState.PBs?.[String(levelNum)];
     const taskName = TASK_NAMES[levelNum - 1] || `Level ${levelNum}`;
     const taskDesc = TASK_DESCRIPTIONS[levelNum - 1] || "";
 
-    // Create a container to hold paper sheet, task name, and records
-    // Note: Inside a container, (0, 0) is the center of the container
+     // container groups the card image, title, description, and PB text together
+    // all coordinates inside a container are relative to its origin point at (0, 0)
     const container = this.add.container(pos.x, pos.y);
     container.setAngle(pos.angle);
 
-    // ── Layer sorting logic — Swaps levels 3 and 4 so 3 overlaps 4 ──
+    // level 3 and 4 have their depth swapped so card 3 visually overlaps card 4
     let defaultDepth = levelNum;
     if (levelNum === 3) {
       defaultDepth = 4;
@@ -91,18 +91,16 @@ export default class levelSelectScene extends Phaser.Scene {
       defaultDepth = 3;
     }
     container.setDepth(defaultDepth);
-    // ─────────────────────────────────────────────────────────────────
 
-    // 1. The paper card image (centered at 0,0 inside container)
+    // paper card image centered at (0, 0) inside the container
     const cardImg = this.add.image(0, 0, `level-${levelNum}`)
       .setOrigin(0.5)
       .setDisplaySize(CARD_W, CARD_H);
     container.add(cardImg);
     
     const baseTitleY = -CARD_H * 0.15 + 20;
-    const titleY = unlocked ? baseTitleY : baseTitleY + 80;
+    const titleY = unlocked ? baseTitleY : baseTitleY + 80; // shift down for locked cards to make room for the lock icon
 
-    // 2. Task Name Text (positioned slightly upper half of paper)
     const textTask = this.add.text(0, titleY, taskName, {
       fontFamily: "'custom-font', monospace",
       fontSize:   "18px",
@@ -113,6 +111,7 @@ export default class levelSelectScene extends Phaser.Scene {
     }).setOrigin(0.5);
     container.add(textTask);
 
+    // position the description directly below the title with a small gap
     const titleBottomY = textTask.y + (textTask.displayHeight / 2);
     const textDesc = this.add.text(0, titleBottomY + 15, taskDesc, {
       fontFamily: "'custom-font', monospace",
@@ -123,21 +122,17 @@ export default class levelSelectScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
     container.add(textDesc);
 
-    // 3. Handle Lock State vs Record State
     if (!unlocked) {
-      // Dim the image and text if locked
+      // dim the text and show a lock icon for levels the player hasn't ranked into yet
       textDesc.setAlpha(0.4);
       textTask.setAlpha(0.4);
-
-      // Add lock emoji right in the center
-      const lockIcon = this.add.image(0, -45, "icon-lock")
+      container.add(this.add.image(0, -45, "icon-lock")
       .setScale(0.03)
-      .setOrigin(0.5);
-      container.add(lockIcon);
-      return; 
+      .setOrigin(0.5));
+      return; // no interactive setup needed for locked cards
     }
 
-    // 4. PB text on unlocked card (positioned on lower half of paper)
+    // show the player's personal best for this level, or "Not Played" if they haven't tried it
     if (pb) {
       const textPB = this.add.text(0, CARD_H * 0.25, `PB: ${pb} WPM`, {
         fontFamily: "'custom-font', monospace",
@@ -146,7 +141,6 @@ export default class levelSelectScene extends Phaser.Scene {
       }).setOrigin(0.5);
       container.add(textPB);
     } else {
-      // Optional: default text if they haven't played it yet
       const textNoPB = this.add.text(0, CARD_H * 0.25, "Not Played", {
         fontFamily: "'custom-font', monospace",
         fontSize:   "14px",
@@ -155,14 +149,14 @@ export default class levelSelectScene extends Phaser.Scene {
       container.add(textNoPB);
     }
 
-    // 5. Make the hit-area interactive based on the card image's dimensions
+    // define the interactive hit area to match the card image exactly
     container.setInteractive(
       new Phaser.Geom.Rectangle(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H), 
       Phaser.Geom.Rectangle.Contains
     );
     container.input.cursor = 'pointer';
 
-    // ── Hover: scale the entire container ─────────────────────────
+    // scale the whole container up slightly on hover for a tactile feel
     container.on("pointerover", () => {
       this.tweens.killTweensOf(container);
       
@@ -175,7 +169,6 @@ export default class levelSelectScene extends Phaser.Scene {
       });
     });
 
-    // ── Pointer out: scale back down ─────────────────────────
     container.on("pointerout", () => {
       this.tweens.killTweensOf(container);
       
@@ -188,7 +181,6 @@ export default class levelSelectScene extends Phaser.Scene {
       });
     });
 
-    // ── Click: trigger level loading ─────────────────────────
     container.on("pointerdown", () => {
       this.sound.play("click", { volume: 0.2 }); 
       this._loadLevel(levelNum);
@@ -196,17 +188,18 @@ export default class levelSelectScene extends Phaser.Scene {
   }
 
   async _loadLevel(levelNum) {
-    // Level 1 always goes to tutorial
+    // level 1 is always the tutorial — skip the API call and go directly
     if (levelNum === 1) {
       this.scene.start("tutorialScene");
       return;
     }
 
     this._status.setText("Loading assignment...");
-    this.input.enabled = false;
+    this.input.enabled = false; // prevent double-clicks while fetching
 
     try {
       const res = await axios.get(`/api/levels/${levelNum}`, { headers: authHeader() });
+      // write the fetched passage data to gameState so gameScene can read it
       Object.assign(gameState, {
         selectedLevel: levelNum,
         passage:       res.data.passage,

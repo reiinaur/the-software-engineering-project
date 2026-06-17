@@ -22,6 +22,7 @@ class User(db.Model):
     createdAt = mapped_column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     @validates('userEmail')
+    # reject any email that doesn't match a basic name@domain.tld pattern
     def validate_email(self, key, address):  
         if not re.match(r"^\S+@\S+\.\S+$", address):
             raise ValueError(f"Database write rejected: '{address}' is not a valid email format.")
@@ -57,6 +58,7 @@ class playerStats(db.Model):
         return amount
     
     @validates('PBs')
+    # PBs must be a dict keyed by numeric string level ids with non-negative integer wpm values
     def validate_pbs_dictionary(self, key, pb_dict):
         if not isinstance(pb_dict, dict):
             raise ValueError("Database write rejected: PBs field must be an Object/Dictionary.")
@@ -130,6 +132,7 @@ class vocabData(db.Model):
         return array_val
 
     def validate_vocab_lengths(self):
+        # words and definitions must be parallel arrays of equal length
         if len(self.words) != len(self.definitions):
             raise ValueError(
                 f"Sync failed: The words array length ({len(self.words)}) "

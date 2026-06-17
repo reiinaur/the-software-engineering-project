@@ -5,6 +5,8 @@ from backend.routes.auth import admin_required
 
 vocab = Blueprint('vocab', __name__)
 
+# all valid topic names 
+# must match exactly what's stored in the JSON file
 TOPICS = [
     "Programming fundamentals",
     "Object-oriented programming",
@@ -19,6 +21,7 @@ JSON_FILEPATH = os.path.join(DATA_DIR, 'vocabulary.json')
 
 
 def _load_json_data():
+    # returns the parsed JSON data, or an empty passages shell if the file doesn't exist yet
     if not os.path.exists(JSON_FILEPATH):
         return {"passages": []}
     try:
@@ -29,16 +32,17 @@ def _load_json_data():
 
 
 def _save_json_data(data):
-    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True) # create the data dir if it doesn't exist yet
     with open(JSON_FILEPATH, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2)
 
 
+# GET /api/vocab/all — returns the list of all valid topic names
 @vocab.route('/api/vocab/all', methods=['GET'])
 def get_all_topics():
     return jsonify(TOPICS), 200
 
-
+# GET /api/vocab/<topic_name> — returns all words and definitions for a given topic
 @vocab.route('/api/vocab/<topic_name>', methods=['GET'])
 def get_words_by_topic(topic_name):
     if topic_name not in TOPICS:
@@ -47,6 +51,7 @@ def get_words_by_topic(topic_name):
     data = _load_json_data()
     passages = data.get('passages', [])
 
+    # collect matching titles (words) and text (definitions) for the requested topic
     filtered_words = []
     filtered_defs = []
     for passage in passages:
@@ -60,7 +65,7 @@ def get_words_by_topic(topic_name):
         "definitions": filtered_defs
     }), 200
 
-
+# POST /api/vocab/admin/add-word — admin only: appends a new word entry to the JSON file
 @vocab.route('/api/vocab/admin/add-word', methods=['POST'])
 @admin_required
 def add_word_to_topic():
@@ -91,14 +96,14 @@ def add_word_to_topic():
     except Exception:
         return jsonify({"message": "Failed writing payload to file store."}), 500
 
-
+# PUT /api/vocab/admin/update-word — admin only: overwrites an existing word + definition pair
 @vocab.route('/api/vocab/admin/update-word', methods=['PUT'])
 @admin_required
 def update_word_in_topic():
     """Admin-only: updates an existing word + definition match."""
     data        = request.get_json() or {}
     topic_name  = data.get('topicName', '').strip()
-    target_word = data.get('targetWord', '').strip()  # The original title before editing
+    target_word = data.get('targetWord', '').strip()  
     new_word    = data.get('newWord', '').strip()
     new_def     = data.get('newDefinition', '').strip()
 
@@ -110,7 +115,7 @@ def update_word_in_topic():
     
     found = False
     for passage in passages:
-        # Match topic and target item title key
+        # match on both topic and title so the same word in different topics isn't affected
         if passage.get('topic') == topic_name and passage.get('title') == target_word:
             passage['title'] = new_word
             passage['text'] = new_def
@@ -126,7 +131,7 @@ def update_word_in_topic():
     except Exception:
         return jsonify({"message": "Error committing updates to file system."}), 500
 
-
+# POST /api/vocab/admin/delete-word — admin only: removes a matching entry from the passages array
 @vocab.route('/api/vocab/admin/delete-word', methods=['POST'])
 @admin_required
 def delete_word_from_topic():
@@ -138,7 +143,7 @@ def delete_word_from_topic():
     json_data = _load_json_data()
     passages = json_data.get('passages', [])
 
-    # Filter everything except the targeted entry item
+    # keep everything except the exact topic and title match
     updated_passages = [
         p for p in passages 
         if not (p.get('topic') == topic_name and p.get('title') == target_word)

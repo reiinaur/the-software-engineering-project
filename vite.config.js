@@ -4,7 +4,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": "http://localhost:5000",
+      "/api": "the-software-engineering-project-production.up.railway.app",
     },
     hmr: {
       protocol: "ws",
