@@ -133,8 +133,8 @@ export default class shopScene extends Phaser.Scene {
     // resolve ownership
     const ownedList  = gameState.ownedItems || gameState.shopOwned?.[cat] || [];
     const equippedId = cat === "accessories" 
-      ? (gameState.shopEquipped?.accessories || gameState.equipped?.accessory || "none") 
-      : (gameState.shopEquipped?.screenTheme || gameState.equipped?.theme || "default");
+      ? (gameState.shopEquipped?.accessories || "none") 
+      : (gameState.shopEquipped?.screenTheme || "default");
 
     // free items (cost 0) and the sentinel values 'none'/'default' are always considered owned
     const isOwned    = ownedList.includes(item.id) || item.cost === 0 || item.id === "none" || item.id === "default";
@@ -208,9 +208,16 @@ export default class shopScene extends Phaser.Scene {
     // renders a filled pill button
     const bg = this._track(this.add.rectangle(x, y, px(8.5), py(3.5), bgHex)
       .setInteractive({ useHandCursor: !!cb }));
-    const lbl = this._track(this.add.text(x, y, label, {
-      fontFamily: "custom-font", fontSize: "15px", color: "#ffffff", fontStyle: "bold"
-    }).setOrigin(0.5));
+
+    if (label === "icon-lock") {
+      // render the actual lock image instead of the literal string "icon-lock"
+      this._track(this.add.image(x, y, "icon-lock").setScale(0.02).setOrigin(0.5));
+    } else {
+      this._track(this.add.text(x, y, label, {
+        fontFamily: "custom-font", fontSize: "15px", color: "#ffffff", fontStyle: "bold"
+      }).setOrigin(0.5));
+    }
+
     if (cb) {
       bg.on("pointerover",  () => bg.setAlpha(0.8));
       bg.on("pointerout",   () => bg.setAlpha(1));
@@ -253,18 +260,11 @@ export default class shopScene extends Phaser.Scene {
         itemId: itemId
       }, { headers: authHeader() });
 
-      // update shopEquipped on gameState using both the new and legacy key shapes
+      // update shopEquipped on gameState — this is the single source of truth read by every scene
       if (!gameState.shopEquipped) {
         gameState.shopEquipped = { accessories: null, screenTheme: null };
       }
       gameState.shopEquipped[cat] = itemId;
-
-      if (!gameState.equipped) gameState.equipped = {};
-      if (cat === "accessories") {
-        gameState.equipped.accessory = itemId;
-      } else if (cat === "screenTheme") {
-        gameState.equipped.theme = itemId;
-      }
 
       // persist the equipped choice to localStorage so it survives scene transitions
       const shop = getShopState() || { owned: {}, equipped: {} };

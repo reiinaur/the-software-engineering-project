@@ -118,7 +118,7 @@ export default class resultsScene extends Phaser.Scene {
 
     const leftEdge  = px(11.5);
     const rightEdge = px(57.5); 
-    const centerPoint = rightEdge - px(18);
+    const centerPoint = (leftEdge+rightEdge)/2;
 
     // info bar — author, topic and wpm
     this.add.text(leftEdge, C.INFO_BAR_Y - 1, `By ${gameState.name || "User"}`, {
