@@ -8,6 +8,7 @@ import resultsScene     from "./scenes/resultsScene.js";
 import shopScene        from "./scenes/shopScene.js";
 import adminScene       from "./scenes/adminScene.js";
 import tutorialScene from "./scenes/tutorialScene.js";
+import './style.css';
 
 const config = {
   // uses WebGL if the browser supports it, otherwise falls back to Canvas
