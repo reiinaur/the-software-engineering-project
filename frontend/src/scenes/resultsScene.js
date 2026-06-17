@@ -82,7 +82,7 @@ export default class resultsScene extends Phaser.Scene {
     });
 
     // register the failure overlay animation for whatever accessory the player has equipped
-    const activeAcc = gameState.equipped?.accessory || "none";
+    const activeAcc = gameState.shopEquipped?.accessories || "none";
     if (activeAcc !== "none") {
       const phases = ["calm", "warning", "deadline", "failure"];
       phases.forEach(phase => {
@@ -105,7 +105,7 @@ export default class resultsScene extends Phaser.Scene {
     this.sound.play("success", { volume: 0.5 });
     
     // match the background colour to the theme active during the game run
-    const equippedTheme = gameState.equipped?.theme || "default";
+    const equippedTheme = gameState.shopEquipped?.screenTheme || "default";
     this.cameras.main.setBackgroundColor(THEMES[equippedTheme] || THEMES.default);
     
     this.add.image(CX, CY, "newspaper").setAngle(0.9); 
@@ -188,7 +188,7 @@ export default class resultsScene extends Phaser.Scene {
     this.pigeon.play("anim-pigeon-failed");
 
     // accessory overlay in failure mode — only rendered if the texture was loaded
-    const activeAcc = gameState.equipped?.accessory || "none";
+    const activeAcc = gameState.shopEquipped?.accessories || "none";
     if (activeAcc !== "none" && this.textures.exists(`${activeAcc}-failure`)) {
       this.accessoryOverlay = this.add.sprite(F.PIGEON_X, F.PIGEON_Y + 10, `${activeAcc}-failure`).setScale(0.25);
       this.accessoryOverlay.play(`anim-acc-${activeAcc}-failure`);
