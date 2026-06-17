@@ -4,37 +4,32 @@ import { CX, CY, GW, GH, colours, HEX, px, py } from "../utils/scale.js";
 import { authHeader, getStats, updateStats } from "../utils/auth.js";
 import { gameState } from "../utils/gameState.js";
 
-// --- SHOP CONFIG HEX COLOR ROUTER ---
+// background colours per theme
 const THEMES = {
   default: '#e6ba88',
-  cyberpunk: '#2b213a',
-  mint: '#a8e6cf',
-  sunset: '#ff8c94',
-  matrix: '#0d0d0d'
+  vanilla: '#f8f2f7',
+  lavendar: '#bcafda',
+  cottoncandy: '#f0b2c7',
+  forest: '#577875'
 };
 
-// Success/Newspaper Screen Layout
+// success / newspaper screen layout constants
 const C = {
   PAPER_X: px(7),           
   PAPER_W: px(43),          
-
   INFO_BAR_Y: py(40),       
   HEADLINE_X: px(13),       
   HEADLINE_Y: py(50),       
   BODY_X: px(13),           
   BODY_Y: py(57),           
-
-  // Stats Sidebar (Right)
   SIDEBAR_X: px(77),        
   HEADER_Y: py(25),         
-  
   STAT_START_Y: py(46),     
   STAT_SPACING: py(6),      
-  
   BTN_Y: py(75),            
 };
 
-// Failed Screen Layout
+// failed screen layout constants
 const F = {
   HEADER_Y: py(25),
   PIGEON_X: CX,
@@ -43,7 +38,7 @@ const F = {
   BTN_Y: py(82),            
 };
 
-// Font Constants
+// font constants
 const FONT_FAMILY = '"Courier Prime", "Courier New", monospace';
 const HEADLINE_FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif'; 
 const THEME_COLOR = "#7767a9"; 
@@ -54,7 +49,7 @@ export default class resultsScene extends Phaser.Scene {
   async create() {
     const r = gameState.lastResult;
     
-    // Register animations locally in this scene to ensure they play correctly
+    // animations must be registered locally in case the scene is the first to run after a refresh
     this._createPigeonAnimations();
 
     if (r.deadlineMet) {
@@ -63,10 +58,12 @@ export default class resultsScene extends Phaser.Scene {
       this._buildFailedScreen(r);
     }
 
+    // save the score to the server regardless of pass/fail
     await this._saveScore(r);
   }
 
   _createPigeonAnimations() {
+    // register all result-screen animations — pigeon, header banners, and any active accessory
     const sets = [
         { key: "anim-pigeon-failed", asset: "pigeon-failed" },
         { key: "anim-header-failed", asset: "mission-failed" },
@@ -84,7 +81,7 @@ export default class resultsScene extends Phaser.Scene {
       }
     });
 
-    // Generate active failure overlay animations if user is wearing accessories
+    // register the failure overlay animation for whatever accessory the player has equipped
     const activeAcc = gameState.equipped?.accessory || "none";
     if (activeAcc !== "none") {
       const phases = ["calm", "warning", "deadline", "failure"];
@@ -104,16 +101,16 @@ export default class resultsScene extends Phaser.Scene {
     }
   }
 
-  // --- SUCCESS / NEWSPAPER SCREEN ---
   _buildCompleteScreen(r) {
     this.sound.play("success", { volume: 0.5 });
     
-    // Dynamic background matching your typing scene
+    // match the background colour to the theme active during the game run
     const equippedTheme = gameState.equipped?.theme || "default";
     this.cameras.main.setBackgroundColor(THEMES[equippedTheme] || THEMES.default);
     
     this.add.image(CX, CY, "newspaper").setAngle(0.9); 
 
+    // update the local PB record immediately so the level select card shows the new value
     if (r.isPB) {
       if (!gameState.PBs) gameState.PBs = {};
       gameState.PBs[String(r.levelNumber)] = r.wpm;
@@ -123,6 +120,7 @@ export default class resultsScene extends Phaser.Scene {
     const rightEdge = px(57.5); 
     const centerPoint = rightEdge - px(18);
 
+    // info bar — author, topic and wpm
     this.add.text(leftEdge, C.INFO_BAR_Y - 1, `By ${gameState.name || "User"}`, {
       fontFamily: FONT_FAMILY, fontSize: "24px", color: THEME_COLOR, fontStyle: "bold"
     }).setOrigin(0, 0.5);
@@ -130,11 +128,12 @@ export default class resultsScene extends Phaser.Scene {
     this.add.text(centerPoint, C.INFO_BAR_Y, `| ${r.topic || "Session"} |`, {
       fontFamily: FONT_FAMILY, fontSize: "24px", color: THEME_COLOR, fontStyle: "bold"
     }).setOrigin(0.5, 0.5);
-
+    
     this.add.text(rightEdge, C.INFO_BAR_Y + 1, `${r.wpm} WPM`, {
       fontFamily: FONT_FAMILY, fontSize: "24px", color: THEME_COLOR, fontStyle: "bold"
     }).setOrigin(1, 0.5);
 
+    // article headline
     this.add.text(C.HEADLINE_X, C.HEADLINE_Y, r.title || "Article Complete", {
       fontFamily: HEADLINE_FONT, 
       fontSize: "42px", 
@@ -144,12 +143,14 @@ export default class resultsScene extends Phaser.Scene {
       strokeThickness: 1.5 
     });
 
+    // full passage body text shown inside the newspaper graphic
     this.add.text(C.BODY_X, C.BODY_Y, gameState.passage, {
       fontFamily: FONT_FAMILY, fontSize: "30px", color: THEME_COLOR, fontStyle: "bold",
       wordWrap: { width: C.PAPER_W },
       lineSpacing: 4
     });
 
+    // animated "article complete" header banner on the sidebar
     this.add.sprite(C.SIDEBAR_X+30, C.HEADER_Y, "article-complete").play("anim-header-success").setScale(0.35);
 
     let dynamicStatStartY = C.STAT_START_Y;
@@ -161,9 +162,10 @@ export default class resultsScene extends Phaser.Scene {
             fontFamily: "custom-font", fontSize: "20px", color: "#9d8ecb", fontStyle: "bold"
         }).setOrigin(0.5);
     } else {
-        dynamicStatStartY -= py(3);
+        dynamicStatStartY -= py(3); // shift stats up when there's no PB badge to fill the space
     }
     
+    // stat rows — wpm, accuracy, xp, and calculated total score
     this._statRow(statsX, valuesX, dynamicStatStartY, "WPM", String(r.wpm));
     this._statRow(statsX, valuesX, dynamicStatStartY + C.STAT_SPACING, "ACC", `${r.accuracy}%`);
     this._statRow(statsX, valuesX, dynamicStatStartY + C.STAT_SPACING * 2, "XP", `+${r.xpGain}`);
@@ -175,24 +177,24 @@ export default class resultsScene extends Phaser.Scene {
     this._imageBtn(C.SIDEBAR_X + 80, C.BTN_Y, "btn-go-home", () => this.scene.start("menuScene")).setScale(0.3);
   }
 
-  // --- FAILED SCREEN ---
   _buildFailedScreen(r) {
     this.sound.play("failed-sound", { volume: 0.5 });
     this.add.image(CX, CY, "failed-bg");
     
     this.add.sprite(CX, F.HEADER_Y, "mission-failed").play("anim-header-failed").setScale(0.4);
 
-    // Render Base Pigeon
+    // base pigeon in failure mood
     this.pigeon = this.add.sprite(F.PIGEON_X, F.PIGEON_Y + 10, "pigeon-failed").setScale(0.25);
     this.pigeon.play("anim-pigeon-failed");
 
-    // ── ATTACH DYNAMIC ACCESSORY IN FAILURE MODE ──
+    // accessory overlay in failure mode — only rendered if the texture was loaded
     const activeAcc = gameState.equipped?.accessory || "none";
     if (activeAcc !== "none" && this.textures.exists(`${activeAcc}-failure`)) {
       this.accessoryOverlay = this.add.sprite(F.PIGEON_X, F.PIGEON_Y + 10, `${activeAcc}-failure`).setScale(0.25);
       this.accessoryOverlay.play(`anim-acc-${activeAcc}-failure`);
     }
 
+    // three-column mini stat display: wpm, accuracy and xp
     const stats = [
         { label: "WPM", val: r.wpm },
         { label: "ACC", val: `${r.accuracy}%` },
@@ -200,7 +202,7 @@ export default class resultsScene extends Phaser.Scene {
     ];
 
     stats.forEach((s, i) => {
-        const x = CX + (i - 1) * 150;
+        const x = CX + (i - 1) * 150; // spread evenly around centre
         this.add.text(x, F.STAT_Y, s.label, { fontFamily: FONT_FAMILY, fontSize: "16px", color: "#aaa" }).setOrigin(0.5);
         this.add.text(x, F.STAT_Y + 25, s.val, { fontFamily: FONT_FAMILY, fontSize: "22px", color: "#fff", fontStyle: "bold" }).setOrigin(0.5);
     });
@@ -210,6 +212,7 @@ export default class resultsScene extends Phaser.Scene {
   }
 
   _statRow(lx, rx, y, label, value) {
+    // renders a left-aligned label and a right-aligned value on the same horizontal line
     this.add.text(lx, y, label, {
       fontFamily: FONT_FAMILY, fontSize: "20px", color: THEME_COLOR, fontStyle: "bold", stroke: THEME_COLOR, strokeThickness: 0.5
     }).setOrigin(0, 0.5);
@@ -232,6 +235,7 @@ export default class resultsScene extends Phaser.Scene {
 
   async _saveScore(r) {
     try {
+      // failed sessions still submit but xp and coins are zeroed out server-side
       const res = await axios.post("/api/stats/submit-score", {
         levelNumber: r.levelNumber,
         wpm: r.wpm,
@@ -243,10 +247,11 @@ export default class resultsScene extends Phaser.Scene {
 
       const bal = res.data.new_balances;
       
-      // Keep state values synchronized across types
+      // keep both coin fields in sync since different scenes read different keys
       gameState.coins = bal.coinBalance;
       gameState.coinBalance = bal.coinBalance;
       
+      // persist updated balances to localStorage so they survive page reloads
       updateStats({
         ...getStats(),
         xpTotal: bal.xpTotal,

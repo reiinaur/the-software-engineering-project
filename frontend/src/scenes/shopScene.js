@@ -11,7 +11,7 @@ const TABS_DEF = {
   screenTheme: { x: px(43.5), w: px(20), h: py(6) },
 };
 
-// ── RECALIBRATED 3-COLUMN GRID CONTAINMENT AREA ──────────────────
+// item grid geometry
 const GRID_X     = px(19.5);             
 const GRID_Y     = py(26);            
 const GRID_W     = GW - px(40);       
@@ -28,11 +28,13 @@ export default class shopScene extends Phaser.Scene {
 
   create() {
     this._activeTab = "accessories";
-    this._objects   = [];
+    this._objects = []; // tracks all display objects so _draw() can tear them all down cleanly
     this._draw();
   }
 
   init() {
+    // init() runs before create() 
+    // syncs gameState from localStorage so the grid shows fresh data
     const savedShop = getShopState(); 
     const savedStats = getStats();
 
@@ -45,7 +47,7 @@ export default class shopScene extends Phaser.Scene {
       gameState.shopOwned = savedShop.owned;
       gameState.shopEquipped = savedShop.equipped || {};
       
-      // Flatten arrays into a single fast lookup array for checking item ownership
+      // flatten into a single array for ownership checks during card rendering
       gameState.ownedItems = [
         ...(savedShop.owned.accessories || []),
         ...(savedShop.owned.screenTheme || [])
@@ -54,12 +56,14 @@ export default class shopScene extends Phaser.Scene {
   }
 
   _draw() {
+    // tear down all previously created objects and redraw from scratch
     this._objects.forEach((o) => o?.destroy());
     this._objects = [];
     this.cameras.main.setBackgroundColor("#ffffff");
 
     this._track(this.add.image(CX, CY, "shop-bg"));
 
+    // back button
     const btnBack = this._track(this.add
       .image(CX - 810, CY - 440, "btn-go-back")
       .setOrigin(0.5)
@@ -74,12 +78,14 @@ export default class shopScene extends Phaser.Scene {
       this.scene.start("menuScene");
     });
 
+    // coin balance display
     const currentCoins = gameState.coins !== undefined ? gameState.coins : (gameState.coinBalance || 0);
     this._coinText = this._track(this.add.text(COIN_X, COIN_Y,
       `COINS: ${currentCoins}`, {
       fontFamily: "custom-font", fontSize: FONT.sm, color: colours.main
     }).setOrigin(0.5));
 
+    // tab labels — active tab is highlighted, inactive tabs have a click zone
     Object.entries(TABS_DEF).forEach(([cat, def]) => {
       const isActive = cat === this._activeTab;
       this._track(this.add.text(def.x, TAB_Y, TAB_LABELS[cat], {
@@ -87,6 +93,7 @@ export default class shopScene extends Phaser.Scene {
         color: isActive ? colours.main : colours.muted
       }).setOrigin(0.5));
 
+      // underline drawn beneath the active tab only
       if (!isActive) {
         const zone = this._track(this.add.zone(def.x, TAB_Y, def.w, def.h)
           .setInteractive({ useHandCursor: true }));
@@ -109,6 +116,7 @@ export default class shopScene extends Phaser.Scene {
       }
     });
 
+    // render one card per item in the active tab's catalogue in a 3-column grid
     const items = CATALOGUE[this._activeTab] ?? [];
     items.forEach((item, i) => {
       const col = i % COLS;
@@ -122,31 +130,24 @@ export default class shopScene extends Phaser.Scene {
   _drawCard(item, cx, cy) {
     const cat        = this._activeTab;
     
-    // Resolve dynamic item ownership
+    // resolve ownership
     const ownedList  = gameState.ownedItems || gameState.shopOwned?.[cat] || [];
     const equippedId = cat === "accessories" 
       ? (gameState.shopEquipped?.accessories || gameState.equipped?.accessory || "none") 
       : (gameState.shopEquipped?.screenTheme || gameState.equipped?.theme || "default");
 
-    // Base free elements are treated as inherently owned
+    // free items (cost 0) and the sentinel values 'none'/'default' are always considered owned
     const isOwned    = ownedList.includes(item.id) || item.cost === 0 || item.id === "none" || item.id === "default";
     const isEquipped = equippedId === item.id;
     const currentCoins = gameState.coins !== undefined ? gameState.coins : (gameState.coinBalance || 0);
     const canAfford  = currentCoins >= item.cost;
     const isFree     = item.cost === 0;
-
-    // ── DRAW OUTLINE ONLY ─────────────────────────────────────────
     const gfx = this._track(this.add.graphics());
-    
-    // Set line thickness to 2px and choose outline color based on state
-    // Equipped = Calm Green, Owned = Muted Indigo, Unowned = Light Gray
     const strokeColor = isEquipped ? 0x88cc88 : isOwned ? 0x8888cc : 0xdddddd;
     gfx.lineStyle(2, strokeColor);
-    
-    // Draw the rounded border outline (no fillStyle underneath!)
     gfx.strokeRoundedRect(cx - CARD_W / 2, cy - CARD_H / 2, CARD_W, CARD_H, 10);
-    // ──────────────────────────────────────────────────────────────
 
+    // item preview image 
     const imgY = cy - CARD_H / 2 + py(11); 
     
     let itemImg = null;
@@ -158,16 +159,18 @@ export default class shopScene extends Phaser.Scene {
 
     if (itemImg) {
       this._track(itemImg);
+      // scale the image to fit within the card while preserving aspect ratio
       const maxW = CARD_W - 40;
       const maxH = py(14);
       const scale = Math.min(maxW / itemImg.width, maxH / itemImg.height);
       itemImg.setScale(scale);
     } else {
-      // Small minimal dash placeholder line if asset texture is missing
+      // placeholder rect if no texture was found
       gfx.lineStyle(1, 0xcccccc);
       gfx.strokeRect(cx - CARD_W / 2 + 20, imgY - py(7), CARD_W - 40, py(14));
     }
 
+    // label and optional cost
     const textY = cy - CARD_H / 2 + py(20);
     this._track(this.add.text(cx - CARD_W / 2 + 16, textY, item.label, {
       fontFamily: "custom-font", fontSize: "20px", color: colours.main, fontStyle: "bold"
@@ -177,7 +180,8 @@ export default class shopScene extends Phaser.Scene {
         fontFamily: "'Roboto Mono', monospace", fontSize: "16px", color: colours.muted
       }).setOrigin(1, 0));
     }
-    
+
+    // action button at the bottom of each card
     this._track(this.add.text(cx - CARD_W / 2 + 16, textY + 26, item.desc, {
       fontFamily: "custom-font", fontSize: "14px", color: colours.muted,
       wordWrap: { width: CARD_W - 32 }
@@ -201,6 +205,7 @@ export default class shopScene extends Phaser.Scene {
   }
 
   _smallBtn(x, y, label, bgHex, cb) {
+    // renders a filled pill button
     const bg = this._track(this.add.rectangle(x, y, px(8.5), py(3.5), bgHex)
       .setInteractive({ useHandCursor: !!cb }));
     const lbl = this._track(this.add.text(x, y, label, {
@@ -218,11 +223,11 @@ export default class shopScene extends Phaser.Scene {
 
   async _buy(itemId, cost, cat) {
     try {
-      // Clean request directly sends 'accessories' or 'screenTheme' to backend
       const res = await axios.post("/api/shop/buy", {
         category: cat, itemId, itemCost: cost
       }, { headers: authHeader() });
 
+      // update both coin fields and the ownership arrays in gameState
       gameState.coins = res.data.coinBalance;
       gameState.coinBalance = res.data.coinBalance;
       
@@ -248,6 +253,7 @@ export default class shopScene extends Phaser.Scene {
         itemId: itemId
       }, { headers: authHeader() });
 
+      // update shopEquipped on gameState using both the new and legacy key shapes
       if (!gameState.shopEquipped) {
         gameState.shopEquipped = { accessories: null, screenTheme: null };
       }
@@ -260,6 +266,7 @@ export default class shopScene extends Phaser.Scene {
         gameState.equipped.theme = itemId;
       }
 
+      // persist the equipped choice to localStorage so it survives scene transitions
       const shop = getShopState() || { owned: {}, equipped: {} };
       shop.equipped = shop.equipped || {};
       shop.equipped[cat] = itemId;
@@ -273,8 +280,8 @@ export default class shopScene extends Phaser.Scene {
   }
 
   _toast(msg, color) {
+    // brief notification at the bottom of the screen that fades out automatically
     if (this._toastObj) this._toastObj.destroy();
-    
     this._toastObj = this.add.text(CX, GH - 50, msg, {
       fontFamily: "custom-font", 
       fontSize: FONT.sm, 
@@ -290,5 +297,6 @@ export default class shopScene extends Phaser.Scene {
     });
   }
 
+  // registers an object with the tracked list so it gets destroyed on the next _draw() call
   _track(obj) { this._objects.push(obj); return obj; }
 }

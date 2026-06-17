@@ -9,11 +9,12 @@ export default class loginScene extends Phaser.Scene {
     super("loginScene");
   }
 
+  // sceneData.mode determines whether to show the login or signup form
   create(sceneData) {
     const mode = sceneData?.mode || "login";
     this._isSignUp = mode === "signup";
 
-    // 1. Animated Background Setup
+    // animated background
     if (!this.anims.exists("bg_animation")) {
       this.anims.create({
         key: "bg_animation",
@@ -28,11 +29,11 @@ export default class loginScene extends Phaser.Scene {
     bg.play("bg_animation");
     bg.setDepth(-1);
 
-    // 2. ID Card Texture Base
+    // id card image that frames the input fields
     const cardKey = this._isSignUp ? "signup-card" : "login-card";
     this.add.image(CX, CY, cardKey).setOrigin(0.5, 0.5).setDepth(2);
 
-    // 3. Form Input State Configuration
+    // set up the input state object and field order depending on mode
     if (this._isSignUp) {
       this._inputValues = { name: "", username: "", email: "", password: "", confirmPass: "" };
       this._fieldsOrder = ["name", "username", "email", "password", "confirmPass"];
@@ -44,7 +45,6 @@ export default class loginScene extends Phaser.Scene {
     }
     this._cursorVisible = true;
 
-    // 4. Input Field Styling Parameters
     const inputStyle = {
       fontFamily: "custom-font",
       fontSize: this._isSignUp ? "18px" : "22px",
@@ -54,22 +54,21 @@ export default class loginScene extends Phaser.Scene {
     this._textObjects = {};
     this._hitZones = [];
 
-    // Define positions dynamically based on screen state profiles
+    // vertical offsets from CY for each field — different sets for login vs signup
     const yOffsets = this._isSignUp 
       ? [-110, -40, 29, 98, 164] 
       : [-5, 110];              
 
-    // Build fields dynamically
+    // build one canvas text object and one invisible click zone per field
     this._fieldsOrder.forEach((fieldName, index) => {
       const yPos = CY + yOffsets[index];
       const placeholderText = "Enter " + fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
 
-      // Create Phaser canvas text instance
       this._textObjects[fieldName] = this.add.text(CX - 10, yPos, placeholderText, { ...inputStyle, color: "#8c7ec088" })
         .setOrigin(0, 0.5)
         .setDepth(5);
 
-      // Create matching precise interactive mouse hit zone area
+      // invisible zone over each row so the player can click to focus that field
       const zone = this.add.zone(CX - 10, yPos, 320, this._isSignUp ? 38 : 50)
         .setOrigin(0, 0.5)
         .setInteractive({ useHandCursor: true });
@@ -81,7 +80,7 @@ export default class loginScene extends Phaser.Scene {
       this._hitZones.push(zone);
     });
 
-    // ── FIXED ERROR TEXT CONFIGURATION (WITH LEFT SHIFT & WORD WRAP) ───
+    // error text shown below the form for validation and server errors
     const errorY = this._isSignUp ? CY + 205 : CY + 149;
     
     this.errorText = this.add.text(CX - 10, errorY, "", { 
@@ -93,7 +92,7 @@ export default class loginScene extends Phaser.Scene {
     .setOrigin(0, 0) 
     .setDepth(5);
 
-    // 5. Blinking Cursor Loop Engine
+    // blinking cursor loop — toggles visibility and re-renders all field texts
     this.time.addEvent({
       delay: 530,
       callback: () => {
@@ -103,13 +102,13 @@ export default class loginScene extends Phaser.Scene {
       loop: true
     });
 
-    // Set initial layout state focus safely
+    // focus the first field on load
     this._switchField(this._activeField);
 
-    // 6. Global Keyboard Event Interceptor
+    // global keyboard listener routes all keypresses through _handleTyping
     this.input.keyboard.on("keydown", (event) => this._handleTyping(event));
 
-    // 7. Interface Controls (Back & Submit Buttons)
+    // back button
     const btnBack = this.add
       .image(CX - 810, CY - 440, "btn-go-back")
       .setOrigin(0.5)
@@ -117,8 +116,8 @@ export default class loginScene extends Phaser.Scene {
       .setScale(0.09)
       .setInteractive({ useHandCursor: true });
 
+    // submit button — key varies between login and signup
     const buttonKey = this._isSignUp ? "btn-signup" : "btn-loginconfirm";
-
     const btnSubmit = this.add
       .image(CX + 270, CY + 230, buttonKey)
       .setOrigin(0.5)
@@ -135,16 +134,14 @@ export default class loginScene extends Phaser.Scene {
       this.scene.start("menuScene");
     });
 
-    // Button animations
     btnSubmit.on("pointerover", () => btnSubmit.setScale(1.1));
     btnSubmit.on("pointerout", () => btnSubmit.setScale(1));
     btnBack.on("pointerover", () => btnBack.setScale(0.11));
     btnBack.on("pointerout", () => btnBack.setScale(0.09));
   }
 
-  // --- CORE ENGINE UTILITIES ---
-
   _switchField(field) {
+     // focus a different field and clear any existing error message
     this._activeField = field;
     this.errorText.setText("");
     this._updateVisualTexts();
@@ -156,7 +153,8 @@ export default class loginScene extends Phaser.Scene {
     if (event.key === "Backspace") {
       currentText = currentText.slice(0, -1);
     } else if (event.key === "Tab") {
-      event.preventDefault(); 
+      event.preventDefault(); // prevent the browser's default focus shift
+      // cycle to the next field in order, wrapping back to the first
       const currentIndex = this._fieldsOrder.indexOf(this._activeField);
       const nextIndex = (currentIndex + 1) % this._fieldsOrder.length;
       this._switchField(this._fieldsOrder[nextIndex]);
@@ -166,6 +164,7 @@ export default class loginScene extends Phaser.Scene {
       if (this._isSignUp) this._handleSignUp(); else this._handleLogin();
       return;
     } else if (event.key.length === 1) {
+      // enforce a character limit — email fields get a slightly longer cap
       const maxLen = this._activeField === "email" ? 24 : 16;
       if (currentText.length < maxLen) {
         currentText += event.key;
@@ -177,9 +176,11 @@ export default class loginScene extends Phaser.Scene {
   }
 
   _updateVisualTexts() {
+    // re-renders every field's display text including the blinking cursor on the active field
     const cursor = this._cursorVisible ? "|" : " ";
 
     this._fieldsOrder.forEach((fieldName) => {
+      // empty field shows placeholder in faded colour, or just the cursor if it's focused
       const rawValue = this._inputValues[fieldName];
       const textObj = this._textObjects[fieldName];
       const isPasswordType = fieldName === "password" || fieldName === "confirmPass";
@@ -192,14 +193,13 @@ export default class loginScene extends Phaser.Scene {
           textObj.setText(niceLabel).setColor("#8c7ec088");
         }
       } else {
+        // password fields are masked with bullet characters
         const displayValue = isPasswordType ? "•".repeat(rawValue.length) : rawValue;
         const completeString = displayValue + (this._activeField === fieldName ? cursor : "");
         textObj.setText(completeString).setColor("#8c7ec0");
       }
     });
   }
-
-  // --- AUTHENTICATION ROUTERS ---
 
   async _handleLogin() {
     const userName = this._inputValues.username.trim();
@@ -222,11 +222,13 @@ export default class loginScene extends Phaser.Scene {
 
         saveSession(res.data.token, user, res.data.playerStats, res.data.shopState);
 
-        // Sync to local variable tracking state immediately
+        // sync shop state to gameState immediately after login
         gameState.coins = res.data.playerStats.coinBalance;
         gameState.coinBalance = res.data.playerStats.coinBalance;
         gameState.shopOwned = res.data.shopState.owned;
         gameState.shopEquipped = res.data.shopState.equipped;
+
+        // flatten owned items into a single array for fast ownership checks in the shop
         gameState.ownedItems = [
           ...(res.data.shopState.owned.accessories || []),
           ...(res.data.shopState.owned.screenTheme || [])
@@ -256,6 +258,7 @@ export default class loginScene extends Phaser.Scene {
     }
 
     try {
+      // register the account then immediately log in so the player lands on the menu
       await axios.post("/api/auth/signup", {
         name,
         username: userName,
@@ -272,6 +275,7 @@ export default class loginScene extends Phaser.Scene {
   }
 
   _onAuthSuccess(data) {
+    // write auth data and player stats into both localStorage and the live gameState object
     saveSession(data.token, { userId: data.userId, name: data.name, role: data.role }, data.playerStats);
     Object.assign(gameState, {
       userId: data.userId, name: data.name, role: data.role,

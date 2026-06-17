@@ -16,6 +16,8 @@ export default class menuScene extends Phaser.Scene {
   }
 
   create() {
+    // animated background spritesheet 
+    // create the animation only once globally
     if (!this.anims.exists("bg_animation")) {
       this.anims.create({
         key: "bg_animation",
@@ -41,6 +43,7 @@ export default class menuScene extends Phaser.Scene {
       const stats = getStats();
       const shop = getShopState();
       
+      // sync gameState to localStorage on every menu visit 
       Object.assign(gameState, {
         userId: user.userId,
         name: user.name,
@@ -52,17 +55,15 @@ export default class menuScene extends Phaser.Scene {
         PBs: stats.PBs,
         shopOwned: shop.owned ?? {
           accessories: [],
-          decor: [],
           screenTheme: [],
         },
         shopEquipped: shop.equipped ?? {
           accessories: null,
-          decor: null,
           screenTheme: null,
         },
       });
 
-      // 🟢 Fix: Ensure flat lookup arrays are initialized for shop validation lists
+      // flat ownership lookup array used by the shop scene for fast membership checks
       gameState.ownedItems = [
         ...(gameState.shopOwned.accessories || []),
         ...(gameState.shopOwned.screenTheme || [])
@@ -75,13 +76,14 @@ export default class menuScene extends Phaser.Scene {
   }
 
   _drawLoggedOutUI() {
+    // shows sign-up and log-in buttons when no session exists
     const btnStartNew = this.add
       .image(px(9), py(57), "btn-start-new")
       .setOrigin(0, 0)
       .setDepth(10)
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => {
-        this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+        this.sound.play("click", { volume: 0.2 }); 
         this.scene.start("loginScene", { mode: "signup" });
       });
 
@@ -99,7 +101,7 @@ export default class menuScene extends Phaser.Scene {
       .setDepth(10)
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => {
-        this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+        this.sound.play("click", { volume: 0.2 }); 
         this.scene.start("loginScene", { mode: "login" });
       });
 
@@ -115,7 +117,7 @@ export default class menuScene extends Phaser.Scene {
   _drawLoggedInUI() {
     const rank = gameState.rankLevel;
 
-    // 1. Rank Text
+    // rank label 
     const rankText = this.add
       .text(px(78), py(11), `RANK ${rank}`, {
         fontFamily: "custom-font",
@@ -128,7 +130,7 @@ export default class menuScene extends Phaser.Scene {
     
     rankText.setStroke(colours.empty, 4);
 
-    // 2. XP Progress Bar Calculations
+    // xp progress bar between the current and next rank thresholds
     const XP_THRESHOLDS = [0, 100, 300, 600, 1000, 1500];
     const rankStart = XP_THRESHOLDS[rank - 1] || 0;
     const rankEnd = XP_THRESHOLDS[rank] || 1500;
@@ -147,7 +149,7 @@ export default class menuScene extends Phaser.Scene {
     gfx.fillStyle(HEX.main);
     gfx.fillRoundedRect(barX, barY - barH / 2, barW * progress, barH, 5);
 
-    // 4. CONDITIONAL ADMIN ICON
+    // admin icon only appears for accounts with the admin role
     if (gameState.role === "admin") {
       this.add
         .image(barX + barW + px(1), barY, "icon-admin") 
@@ -156,7 +158,7 @@ export default class menuScene extends Phaser.Scene {
         .setDepth(10)      
         .setInteractive({ useHandCursor: true })
         .on("pointerdown", () => {
-          this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+          this.sound.play("click", { volume: 0.2 }); 
           this.scene.start("adminScene");
         });
     }
@@ -169,7 +171,7 @@ export default class menuScene extends Phaser.Scene {
       .setDepth(10)
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => {
-        this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+        this.sound.play("click", { volume: 0.2 }); 
         this.scene.start("levelSelectScene");
       });
 
@@ -188,7 +190,7 @@ export default class menuScene extends Phaser.Scene {
       .setDepth(10)
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => {
-        this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+        this.sound.play("click", { volume: 0.2 }); 
         this.scene.start("shopScene");
       });
 
@@ -207,7 +209,7 @@ export default class menuScene extends Phaser.Scene {
       .setDepth(10)
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => {
-        this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+        this.sound.play("click", { volume: 0.2 });
         clearSession();
         Object.assign(gameState, {
           userId: null,
@@ -221,7 +223,7 @@ export default class menuScene extends Phaser.Scene {
           ownedItems: []
         });
         this.scene.restart();
-      }); // 🟢 Fix: Removed trailing context argument error from parameter tail block
+      });
 
     btnLogout.on("pointerover", function () {
       this.setScale(1.05);
@@ -232,6 +234,8 @@ export default class menuScene extends Phaser.Scene {
     });
   }
 
+  // generic interactive text item helper 
+  // used for simple clickable menu labels
   _item(x, y, label, cb, color = colours.light) {
     const t = this.add
       .text(x, y, label, {
@@ -244,7 +248,7 @@ export default class menuScene extends Phaser.Scene {
     t.on("pointerover", () => t.setStyle({ color: colours.muted }));
     t.on("pointerout", () => t.setStyle({ color }));
     t.on("pointerdown", () => {
-      this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+      this.sound.play("click", { volume: 0.2 });
       cb();
     });
   }
