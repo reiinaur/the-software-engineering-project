@@ -21,28 +21,28 @@ export const CATALOGUE = {
       label: "No Accessory",
       cost: 0,
       desc: "Remove all accessories from your pigeon.",
-      assetKey: "none-placeholder"
+      assetKey: "none"
     },
     {
       id: "silly-hat",
       label: "Silly Hat",
       cost: 30,
       desc: "A silly hat to brighten your pigeon's work day.",
-      assetKey: "silly-hat-placeholder"
+      assetKey: "silly-hat"
     },
     {
       id: "crown",
       label: "Royal Crown",
       cost: 75,
       desc: "Treat your bird like the true royalty they are.",
-      assetKey: "crown-placeholder"
+      assetKey: "crown"
     },
     {
       id: "top-hat",
       label: "Top Hat",
       cost: 50,
       desc: "An elegant, classy hat for an equally elegant bird.",
-      assetKey: "top-hat-placeholder"
+      assetKey: "top-hat"
     }
   ],
   screenTheme: [
@@ -102,12 +102,12 @@ export function renderMascot(scene, x, y, scale = 1, mood = "calm") {
   // accessory overlay — only rendered if the player has something equipped
   const equippedId = gameState.shopEquipped?.accessories;
   if (equippedId) {
-    const item = CATALOGUE.accessories.find((i) => i.id === equippedId);
+    const item = CATALOGUE.accessories.find((i) => i.id === equippedAccId);
     if (item?.assetKey) {
       // prefer the mood-specific sheet 
       // fall back to the generic one if unavailable
-      const moodKey    = `acc-${item.assetKey}-${mood}`;
-      const genericKey = `acc-${item.assetKey}`;
+      const moodKey    = `${item.assetKey}-${mood}`;
+      const genericKey = `${item.assetKey}`;
       const texKey     = scene.textures.exists(moodKey) ? moodKey : genericKey;
 
       if (scene.textures.exists(texKey)) {
