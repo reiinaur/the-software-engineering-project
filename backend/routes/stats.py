@@ -52,12 +52,11 @@ def submit_level_score():
         player.xpTotal     += xp_gain
         player.coinBalance += coins_earned
  
-        # walk through thresholds to find the highest rank the player has now unlocked
-        new_rank = 1
-        for i, threshold in enumerate(RANK_THRESHOLDS):
-            if player.xpTotal >= threshold:
-                new_rank = i + 1
-        player.rankLevel = min(new_rank, 5)  # Cap at 5
+        # count how many thresholds the player's total XP has actually passed
+        passed_thresholds = sum(1 for t in RANK_THRESHOLDS if player.xpTotal >= t)
+
+        # set rank level, ensuring it stays between 1 and 5
+        player.rankLevel = min(passed_thresholds, 5)
  
         # write score history so past runs can be shown on the results/level select screens
         history_entry = scoreHistory(

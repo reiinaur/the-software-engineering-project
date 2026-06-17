@@ -66,7 +66,7 @@ def signUp():
     userName = data.get('username', '').strip()
     userEmail = data.get('email', '').strip()
     passInput = data.get('password', '')
-    confirmPass = data.get('confirmPass', '')
+    confirmPass = data.get('confirmPass', passInput)
  
     if not all([name, userName, userEmail, passInput, confirmPass]):
         return jsonify({"message": "All fields are required."}), 400
