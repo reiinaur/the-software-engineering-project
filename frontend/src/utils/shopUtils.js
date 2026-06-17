@@ -1,5 +1,5 @@
 import { gameState } from "./gameState.js";
-import { MOODS, ACCESSORY_IDS } from "./scale.js";
+import { MOODS } from "./scale.js";
 
 // display labels shown on each shop tab
 export const TAB_LABELS = {
