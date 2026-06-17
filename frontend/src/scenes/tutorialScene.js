@@ -266,7 +266,13 @@ export default class tutorialScene extends Phaser.Scene {
       gameState.PBs         = bal.PBs;
 
       // persist the updated stats to localStorage
-      updateStats({ ...getStats(), xpTotal: bal.xpTotal, coinBalance: bal.coinBalance, finLevels: bal.unlockedLevels, PBs: bal.PBs });
+      updateStats({ 
+        ...getStats(), 
+        rankLevel: res.data.newRank,
+        xpTotal: bal.xpTotal, 
+        coinBalance: bal.coinBalance, 
+        finLevels: bal.unlockedLevels, 
+        PBs: bal.PBs });
     } catch (e) {
       console.warn("Tutorial score submit failed", e);
     }
