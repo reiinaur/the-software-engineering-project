@@ -148,10 +148,21 @@ export default class gameScene extends Phaser.Scene {
 
     // accessory overlay — rendered on top of the pigeon at the same position
     this.accessorySprite = null;
-    this.currentAcc = gameState.equipped?.accessory || "none"; 
+    this.currentAcc = gameState.shopEquipped?.accessories || "none"; 
 
-    if (this.currentAcc !== "none" && this.textures.exists(`${this.currentAcc}-calm`)) {
-      this.accessorySprite = this.add.sprite(PIGEON_X, PIGEON_Y, `${this.currentAcc}-calm`).setScale(0.4);
+    // match the assetKey from the catalogue 
+    const assetKeyMap = {
+      "none": "none-placeholder",
+      "silly-hat": "silly-hat-placeholder",
+      "crown": "crown-placeholder",
+      "top-hat": "top-hat-placeholder"
+    };
+
+    const assetBase = assetKeyMap[this.currentAcc] || `${this.currentAcc}-placeholder`;
+    const targetTexKey = `acc-${assetBase}-calm`;
+
+    if (this.currentAcc !== "none" && this.textures.exists(targetTexKey)) {
+      this.accessorySprite = this.add.sprite(PIGEON_X, PIGEON_Y, targetTexKey).setScale(0.4);
       this.accessorySprite.play(`anim-acc-${this.currentAcc}-calm`);
     }
 
@@ -216,7 +227,7 @@ export default class gameScene extends Phaser.Scene {
     });
 
     // also register phase-specific accessory animations for whatever the player has equipped
-    const activeAcc = gameState.equipped?.accessory || "none";
+    const activeAcc = gameState.shopEquipped?.accessories || "none";
     if (activeAcc !== "none") {
       const phases = ["calm", "warning", "deadline", "failure"];
       phases.forEach(phase => {

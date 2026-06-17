@@ -210,8 +210,8 @@ export default class shopScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: !!cb }));
 
     if (label === "icon-lock") {
-      // render the actual lock image instead of the literal string "icon-lock"
-      this._track(this.add.image(x, y, "icon-lock").setScale(0.02).setOrigin(0.5));
+      // render the actual lock image 
+      this._track(this.add.image(x, y, "icon-lock").setScale(0.015).setOrigin(0.5));
     } else {
       this._track(this.add.text(x, y, label, {
         fontFamily: "custom-font", fontSize: "15px", color: "#ffffff", fontStyle: "bold"
