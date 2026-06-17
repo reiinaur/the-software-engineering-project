@@ -3,7 +3,7 @@ import os
 import json
 from backend.routes.auth import admin_required
 
-vocab = Blueprint('vocab', __name__)
+vocab = Blueprint('vocab', __name__, url_prefix='/api/vocab')
 
 # all valid topic names 
 # must match exactly what's stored in the JSON file
