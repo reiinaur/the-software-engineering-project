@@ -1,21 +1,23 @@
 from flask import Blueprint, request, jsonify, g
 from models import db, playerStats, shopState
-from routes.auth import token_required
+from backend.routes.auth import token_required
 
 shop = Blueprint('shop', __name__)
 
 @shop.route('/api/shop/buy', methods=['POST'])
 @token_required
+# deducts coins from the player's balance and appends the item to their inventory
 def purchase_item():
     data      = request.get_json() or {}
     category  = data.get('category') # 'accessories' or 'screenTheme'
     item_id   = data.get('itemId')
     item_cost = data.get('itemCost')
 
+    # reject if any required field is missing or itemCost isn't a proper integer
     if not all([category, item_id, isinstance(item_cost, int)]):
         return jsonify({"message": "Missing or invalid purchase fields."}), 400
 
-    # Safety guard: stop old 'colours' or 'decor' requests completely
+    # guard against stale frontend requests that still use old category names
     if category not in ['accessories', 'screenTheme']:
         return jsonify({"message": f"Invalid category: {category}"}), 400
 
@@ -28,7 +30,7 @@ def purchase_item():
     if stats.coinBalance < item_cost:
         return jsonify({"message": f"Not enough coins. Need {item_cost}."}), 402
 
-    # Safely retrieve the list, defaulting to an empty list if it's currently falsy
+    # getattr pulls the list for the given category; fall back to [] if the column is null
     target_list = getattr(inventory, category, []) or []
     
     if item_id in target_list:
@@ -37,7 +39,7 @@ def purchase_item():
     try:
         stats.coinBalance -= item_cost
 
-        # Force a fresh clean list copy to ensure SQLAlchemy flags the JSON column mutation change
+       # copy the list before mutating so SQLAlchemy detects the change on the JSON column
         updated_list = list(target_list)
         updated_list.append(item_id)
         
@@ -50,12 +52,13 @@ def purchase_item():
             "ownedItems":  updated_list
         }), 200
 
-    except Exception as err: # Changed from ValueError to Exception to prevent 500 crashes!
+    except Exception as err: 
         db.session.rollback()
         return jsonify({"message": str(err)}), 400
  
 @shop.route('/api/shop/equip', methods=['POST'])
 @token_required
+# updates the player's equipped slot for the given category
 def equip_item():
     data     = request.get_json() or {}
     category = data.get('category') # 'accessories' or 'screenTheme'
@@ -67,6 +70,7 @@ def equip_item():
 
     if category == 'accessories':
         db_column_target = 'equippedAccessories'
+        # 'none' means unequip, so only validate ownership for real item ids
         if item_id != "none":
             owned_list = getattr(inventory, 'accessories', []) or []
             if item_id not in owned_list:
@@ -74,6 +78,7 @@ def equip_item():
 
     elif category == 'screenTheme':
         db_column_target = 'equippedScreenTheme'
+        # 'default' is the built-in theme and doesn't need to be purchased
         if item_id != "default":
             owned_list = getattr(inventory, 'screenTheme', []) or []
             if item_id not in owned_list:
