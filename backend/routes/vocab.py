@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 import os
 import json
-from routes.auth import admin_required
+from backend.routes.auth import admin_required
 
 vocab = Blueprint('vocab', __name__)
 
