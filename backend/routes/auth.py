@@ -5,7 +5,7 @@ import jwt
 import datetime
 from functools import wraps
 from flask import Blueprint, request, jsonify, current_app, g
-from api.backend.models import db, User, playerStats, shopState
+from models import db, User, playerStats, shopState
 
 auth = Blueprint('auth', __name__)
 
