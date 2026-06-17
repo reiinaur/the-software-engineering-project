@@ -1,5 +1,8 @@
 {
-  "dependencies": {
-    "phaser3-rex-plugins": "^1.80.20"
+  "scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "vercel-build": "vite build",
+  "preview": "vite preview"
   }
 }
