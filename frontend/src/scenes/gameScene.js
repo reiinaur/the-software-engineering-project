@@ -1,47 +1,43 @@
 import Phaser from "phaser";
-import { GW, GH, CX, CY, FONT, COLORS, HEX, px, py } from "../utils/scale.js";
+import { GW, GH, CX, CY, FONT, colours, HEX, px, py } from "../utils/scale.js";
 import { gameState } from "../utils/gameState.js";
-import { getGameBgKey, renderMascot, changeMascotMood } from "../utils/shopUtils.js";
 
-// timer 
-const TIMER_X    = px(95);
-const TIMER_Y    = py(3.2);
+// --- HEADER & MENUBAR POSITIONING ---
+const TIMER_X     = px(11);         
+const TIMER_Y     = py(9);        
 
-// stats in menu bar area
-const WPM_X      = px(65);
-const WPM_Y      = py(8.3);
-const ACC_X      = px(75);
-const ACC_Y      = py(8.3);
+const WPM_X       = px(45);         
+const WPM_Y       = py(8.3);
+const ACC_X       = px(53);         
+const ACC_Y       = py(8.3);
 
-// progress bar
-const PROG_X     = 0;
-const PROG_Y     = py(12.5);
-const PROG_H     = py(0.7);    // height of bar in game units
+// --- RESTRICTED PROGRESS BAR ---
+const PROG_X      = px(7);          
+const PROG_Y      = py(11.8);       
+const PROG_W      = px(51.3);       
+const PROG_H      = py(0.7);        
 const PROG_COLOR_CALM     = 0x44aa77;
 const PROG_COLOR_WARNING  = 0xffaa00;
 const PROG_COLOR_DEADLINE = 0xe94560;
 
-// document typing area 
-const DOC_LEFT   = px(7);     // left edge of where text starts
-const DOC_TOP    = py(19);    // top of typing area
-const DOC_RIGHT  = px(52);    // right edge (for word wrap)
-const CHAR_SIZE  = 26;        // font size in game units for passage text
-const LINE_H     = 44;        // line height in game units
+// --- TYPING PAPER DIMENSIONS ---
+const DOC_LEFT   = px(10);         
+const DOC_TOP    = py(22);         
+const DOC_RIGHT  = px(55);         
+const CHAR_SIZE  = 26;             
+const LINE_H     = 44;             
 
-// pigeon 
-const MASCOT_X   = px(77);
-const MASCOT_Y   = py(52);
-const MASCOT_SCALE = 0.22;
+// --- PIGEON ART ASSETS & COORDINATES ---
+const PIGEON_X   = px(78);
+const PIGEON_Y   = py(60);
 
-// speech bubble 
-const BUBBLE_Y   = py(16);
-const BUBBLE_W   = px(38);
-const BUBBLE_H   = py(13);
-// ─────────────────────────────────────────────────────────────────────────────
+// Adjusted bubble coordinates to center text nicely over your image
+const BUBBLE_X   = px(83);         
+const BUBBLE_Y   = py(28);
 
 const EMOTIONS = {
-  calm:     "(ˊᵕˋ)",
-  warning:  "(>_<)",
+  calm:     "( ˊ ᵕ ˋ )",
+  warning:  "!( ˊ ᵕ ˋ )",       
   deadline: "!(´Д`!)",
 };
 
@@ -49,10 +45,15 @@ export default class gameScene extends Phaser.Scene {
   constructor() { super("gameScene"); }
 
   create() {
-    // ── Background (theme-dependent hand-drawn image) ──────────────
-    this.add.image(CX, CY, getGameBgKey());
+    // 1. Core Layout Setup
+    this.add.image(CX, CY, "default-typing-bg", 0); 
+    this.add.image(px(32), py(86), "paper").setScale(0.8); // Updated from default-paper to paper
 
-    // typing engine state at beginning of gameplay
+    this.headerText = this.add.text(px(25), py(2.5), "SSA - DESCRIBE HOW SESSION MANAGEMENT CAN AFFECT CODE EXECUTION", {
+      fontFamily: "'Roboto Mono', monospace", fontSize: "20px", color: "#000000"
+    }).setOrigin(0, 0.5);
+
+    // Engine state initialization
     this.cursorIndex    = 0;
     this.correctChars   = 0;
     this.incorrectChars = 0;
@@ -61,36 +62,31 @@ export default class gameScene extends Phaser.Scene {
     this.deadlineMet    = false;
     this._ended         = false;
     this.pressurePhase  = "calm";
-    this.timerDuration  = gameState.timerDuration;
+    this.timerDuration  = gameState.timerDuration || 60;
     this.startTime      = this.time.now;
-    this._equippedAcc   = gameState.shopEquipped?.accessories ?? null;
 
-    // text for timer and other stats
+    // 2. Text and UI Stats instantiation 
     this._timerText = this.add.text(TIMER_X, TIMER_Y, "00:00", {
-      fontFamily: "'Roboto Mono', monospace",
-      fontSize:   "26px",       // small enough to fit in the drawn title bar
-      color:      "#ffffff",    // adjust to match your title bar text colour
+      fontFamily: "'Courier New', monospace", fontSize: "24px", color: "#292929", fontWeight: "bold"
     }).setOrigin(1, 0.5);
 
-    this._wpmText = this.add.text(WPM_X, WPM_Y, "WPM 0", {
-      fontFamily: "'Roboto Mono', monospace", fontSize: "20px", color: "#444444"
+    this._wpmText = this.add.text(WPM_X, WPM_Y, "WPM 00%", {
+      fontFamily: "'Courier New', monospace", fontSize: "24px", color: "#292929"
     });
-    this._accText = this.add.text(ACC_X, ACC_Y, "ACC 0%", {
-      fontFamily: "'Roboto Mono', monospace", fontSize: "20px", color: "#444444"
+    this._accText = this.add.text(ACC_X, ACC_Y, "ACC 00%", {
+      fontFamily: "'Courier New', monospace", fontSize: "24px", color: "#292929"
     });
 
-    // progress bar
-    this._progBar = this.add.rectangle(PROG_X, PROG_Y, GW, PROG_H, PROG_COLOR_CALM)
-      .setOrigin(0, 0);
+    // 3. Progress Timer bar
+    this._progBarBackground = this.add.rectangle(PROG_X, PROG_Y, PROG_W, PROG_H, 0xdddddd).setOrigin(0, 0);
+    this._progBar = this.add.rectangle(PROG_X, PROG_Y, PROG_W, PROG_H, PROG_COLOR_CALM).setOrigin(0, 0);
 
-    // passage text
+    // 4. Passage generation loop
     this._charTexts = [];
-    const passage   = gameState.passage || "";
+    const passage   = gameState.passage || "Efficient session management limits memory consumption...";
     let cx = DOC_LEFT, cy = DOC_TOP;
 
     passage.split("").forEach((ch) => {
-      // Probe character width (Courier New is monospace so all are equal,
-      // but we follow this pattern in case the font changes)
       const probe = this.add.text(0, -500, ch, {
         fontFamily: "'Courier New', monospace", fontSize: `${CHAR_SIZE}px`
       });
@@ -102,36 +98,35 @@ export default class gameScene extends Phaser.Scene {
       const t = this.add.text(cx, cy, ch, {
         fontFamily: "'Courier New', monospace",
         fontSize:   `${CHAR_SIZE}px`,
-        color:      "#bbbbbb",   // untyped = light grey
+        color:      "#a0a0a0", 
       });
       this._charTexts.push(t);
       cx += t.width;
     });
 
-    // blinking cursor
-    this._cursor = this.add.rectangle(0, 0, 3, CHAR_SIZE + 4, HEX.accent);
+    this._cursor = this.add.rectangle(0, 0, 3, CHAR_SIZE + 4, HEX.accent || 0x000000);
     this._updateCursor();
     this.time.addEvent({
       delay: 500, loop: true,
       callback: () => { if (this._cursor) this._cursor.setVisible(!this._cursor.visible); }
     });
   
-    this._mascotLayers = renderMascot(this, MASCOT_X, MASCOT_Y, MASCOT_SCALE, "calm");
+    // 5. Setup Pigeon Animations & Instantiation
+    this._createPigeonAnimations();
+    
+    this.pigeonSprite = this.add.sprite(PIGEON_X, PIGEON_Y, "pigeon-calm").setScale(0.4);
+    this.pigeonSprite.play("anim-pigeon-calm");
 
-    // speech bubble
-    this._bubbleGfx = this.add.graphics();
-    this._drawBubble();
+    // Hand-drawn speech bubble image integration
+    this.speechBubble = this.add.image(px(83), py(28), "bubble").setScale(0.15);
 
-    this._emotionText = this.add.text(
-      BUBBLE_X + BUBBLE_W / 2,
-      BUBBLE_Y + BUBBLE_H / 2,
-      EMOTIONS.calm, {
+    this._emotionText = this.add.text(BUBBLE_X, BUBBLE_Y, EMOTIONS.calm, {
       fontFamily: "'Roboto Mono', monospace",
-      fontSize:   FONT.lg,
-      color:      COLORS.dark,
+      fontSize:   "22px",
+      color:      "#000000",
     }).setOrigin(0.5);
 
-    // collects keyboard input
+    // 6. Typing Engine Listeners
     this.input.keyboard.on("keydown", (event) => {
       if (!this.sessionActive || this._ended || event.key.length !== 1) return;
 
@@ -139,7 +134,7 @@ export default class gameScene extends Phaser.Scene {
       const isMatch  = event.key === expected;
 
       if (isMatch) {
-        this._charTexts[this.cursorIndex].setStyle({ color: "#1a1a2e", fontStyle: "bold" });
+        this._charTexts[this.cursorIndex].setStyle({ color: "#000000", fontStyle: "normal" });
         this.correctChars++;
         this.cursorIndex++;
       } else {
@@ -157,22 +152,30 @@ export default class gameScene extends Phaser.Scene {
       }
     });
 
-    // 1 seconf tick
-    this.time.addEvent({ delay: 1000, loop: true, callback: this._tick, callbackScope: this });
+    this.time.delayedCall(10, () => {
+      this.startTime = this.time.now;
+      this.time.addEvent({ delay: 1000, loop: true, callback: this._tick, callbackScope: this });
+    });
   }
 
-  _drawBubble() {
-    this._bubbleGfx.clear();
-    this._bubbleGfx.fillStyle(0xffffff);
-    this._bubbleGfx.fillRoundedRect(BUBBLE_X, BUBBLE_Y, BUBBLE_W, BUBBLE_H, 14);
-    this._bubbleGfx.lineStyle(2, 0x333333);
-    this._bubbleGfx.strokeRoundedRect(BUBBLE_X, BUBBLE_Y, BUBBLE_W, BUBBLE_H, 14);
-    // Tail pointing down-left toward mascot
-    const tx = BUBBLE_X + 60;
-    this._bubbleGfx.fillTriangle(tx, BUBBLE_Y + BUBBLE_H, tx + 22, BUBBLE_Y + BUBBLE_H, tx - 8, BUBBLE_Y + BUBBLE_H + 20);
-    this._bubbleGfx.lineStyle(2, 0x333333);
-    this._bubbleGfx.lineBetween(tx, BUBBLE_Y + BUBBLE_H, tx - 8, BUBBLE_Y + BUBBLE_H + 20);
-    this._bubbleGfx.lineBetween(tx + 22, BUBBLE_Y + BUBBLE_H, tx - 8, BUBBLE_Y + BUBBLE_H + 20);
+  _createPigeonAnimations() {
+    const anims = [
+      { key: "anim-pigeon-calm", asset: "pigeon-calm" },
+      { key: "anim-pigeon-stressed", asset: "pigeon-stressed" },
+      { key: "anim-pigeon-panic", asset: "pigeon-panic" },
+      { key: "anim-pigeon-failed", asset: "pigeon-failed" }
+    ];
+
+    anims.forEach(anim => {
+      if (!this.anims.exists(anim.key)) {
+        this.anims.create({
+          key: anim.key,
+          frames: this.anims.generateFrameNumbers(anim.asset, { start: 0, end: 1 }), 
+          frameRate: 2, 
+          repeat: -1    
+        });
+      }
+    });
   }
 
   _updateCursor() {
@@ -191,14 +194,12 @@ export default class gameScene extends Phaser.Scene {
     const left    = Math.max(0, this.timerDuration - elapsed);
     const ratio   = left / this.timerDuration;
 
-    // Timer display
     const m = String(Math.floor(left / 60)).padStart(2, "0");
     const s = String(Math.floor(left % 60)).padStart(2, "0");
     this._timerText.setText(`${m}:${s}`);
 
-    // Pressure phase
-    const newPhase = left > this.timerDuration * 0.4 ? "calm"
-                   : left > this.timerDuration * 0.15 ? "warning"
+    const newPhase = left > this.timerDuration * 0.5 ? "calm"
+                   : left > this.timerDuration * 0.2 ? "warning"
                    : "deadline";
 
     if (newPhase !== this.pressurePhase) {
@@ -208,18 +209,23 @@ export default class gameScene extends Phaser.Scene {
                 : PROG_COLOR_DEADLINE;
       this._progBar.setFillStyle(col);
       this._emotionText.setText(EMOTIONS[newPhase]);
-      // trigger pressure phase -> changes pigeon mood
-      changeMascotMood(this, this._mascotLayers, newPhase, this._equippedAcc);
+      
+      if (newPhase === "calm") {
+        this.pigeonSprite.play("anim-pigeon-calm");
+      } else if (newPhase === "warning") {
+        this.pigeonSprite.play("anim-pigeon-stressed");
+      } else if (newPhase === "deadline") {
+        this.pigeonSprite.play("anim-pigeon-panic");
+      }
     }
 
-    this._progBar.width = GW * ratio;
+    this._progBar.width = PROG_W * ratio;
 
     if (elapsed > 0) {
       const wpm = Math.round((this.correctChars / 5) / (elapsed / 60));
-      const acc = this.totalChars > 0
-        ? Math.round((this.correctChars / this.totalChars) * 100) : 0;
-      this._wpmText.setText(`WPM ${wpm}`);
-      this._accText.setText(`ACC ${acc}%`);
+      const acc = this.totalChars > 0 ? Math.round((this.correctChars / this.totalChars) * 100) : 0;
+      this._wpmText.setText(`WPM ${String(wpm).padStart(2, "0")}%`);
+      this._accText.setText(`ACC ${String(acc).padStart(2, "0")}%`);
     }
 
     if (left <= 0) {
@@ -235,8 +241,7 @@ export default class gameScene extends Phaser.Scene {
 
     const elapsed  = (this.time.now - this.startTime) / 1000;
     const wpm      = elapsed > 0 ? Math.round((this.correctChars / 5) / (elapsed / 60)) : 0;
-    const accuracy = this.totalChars > 0
-      ? Math.round((this.correctChars / this.totalChars) * 10000) / 100 : 0;
+    const accuracy = this.totalChars > 0 ? Math.round((this.correctChars / this.totalChars) * 10000) / 100 : 0;
     const xpGain   = Math.round(wpm * (accuracy / 100));
 
     let coins = 10;
@@ -250,6 +255,6 @@ export default class gameScene extends Phaser.Scene {
       isPB, deadlineMet: this.deadlineMet, levelNumber: gameState.selectedLevel,
     };
 
-    this.time.delayedCall(700, () => this.scene.start("resultsScene"));
+    this.scene.start("resultsScene");
   }
 }

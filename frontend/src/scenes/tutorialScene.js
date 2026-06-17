@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { GW, GH, CX, CY, FONT, COLORS, HEX, px, py } from "../utils/scale.js";
+import { GW, GH, CX, CY, FONT, colours, HEX, px, py } from "../utils/scale.js";
 import { gameState } from "../utils/gameState.js";
 import { renderMascot } from "../utils/shopUtils.js";
 
@@ -115,7 +115,7 @@ export default class tutorialScene extends Phaser.Scene {
       step.speech, {
       fontFamily: "Georgia, serif",
       fontSize:   FONT.sm,
-      color:      COLORS.dark,
+      color:      colours.dark,
       align:      "center",
       wordWrap:   { width: BUBBLE_W - 40 },
     }).setOrigin(0.5);
@@ -127,7 +127,7 @@ export default class tutorialScene extends Phaser.Scene {
     if (step.passage !== null) {
       const stepInd = this.add.text(STEP_IND_X, STEP_IND_Y,
         `Step ${currentTyping} of ${maxTypingSteps}`, {
-        fontFamily: "Arial", fontSize: FONT.xs, color: COLORS.muted
+        fontFamily: "Arial", fontSize: FONT.xs, color: colours.muted
       }).setOrigin(0.5);
       this._stepObjects.push(stepInd);
     }
@@ -138,10 +138,10 @@ export default class tutorialScene extends Phaser.Scene {
         "→  Go to Newsroom", {
         fontFamily: "Georgia, serif",
         fontSize:   FONT.lg,
-        color:      COLORS.dark,
+        color:      colours.dark,
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      btn.on("pointerover",  () => btn.setStyle({ color: COLORS.muted }));
-      btn.on("pointerout",   () => btn.setStyle({ color: COLORS.dark }));
+      btn.on("pointerover",  () => btn.setStyle({ color: colours.muted }));
+      btn.on("pointerout",   () => btn.setStyle({ color: colours.dark }));
       btn.on("pointerdown",  () => this.scene.start("levelSelectScene"));
       this._stepObjects.push(btn);
 
@@ -153,7 +153,7 @@ export default class tutorialScene extends Phaser.Scene {
     if (step.passage === null) {
       // ── "Press any key" step ──────────────────────────────────────
       const hintText = this.add.text(CX, py(82), step.hint ?? "Press any key to continue →", {
-        fontFamily: "Arial", fontSize: FONT.xs, color: COLORS.muted
+        fontFamily: "Arial", fontSize: FONT.xs, color: colours.muted
       }).setOrigin(0.5);
       this._stepObjects.push(hintText);
 
@@ -169,7 +169,7 @@ export default class tutorialScene extends Phaser.Scene {
     // ── Typing step ───────────────────────────────────────────────
     if (step.hint) {
       const hint = this.add.text(PASSAGE_X, PASSAGE_Y - py(6), step.hint, {
-        fontFamily: "Arial", fontSize: FONT.xs, color: COLORS.muted
+        fontFamily: "Arial", fontSize: FONT.xs, color: colours.muted
       });
       this._stepObjects.push(hint);
     }

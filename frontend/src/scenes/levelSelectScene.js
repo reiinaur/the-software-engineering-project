@@ -1,112 +1,200 @@
 import Phaser from "phaser";
 import axios from "axios";
-import { GW, GH, CX, CY, FONT, COLORS, HEX, px, py } from "../utils/scale.js";
+import { GW, GH, CX, CY, FONT, colours, HEX, px, py } from "../utils/scale.js";
 import { authHeader } from "../utils/auth.js";
 import { gameState } from "../utils/gameState.js";
-import { renderMascot } from "../utils/shopUtils.js";
 
-// ⚠️ Adjust these after measuring your background:
-const TUTORIAL_BTN_X  = px(15);    // centre of drawn tutorial button
-const TUTORIAL_BTN_Y  = py(82);
-const TUTORIAL_BTN_W  = px(22);
-const TUTORIAL_BTN_H  = py(8);
+// ── Paper card positions (centre of each blank paper on the corkboard) ──────
+const PAPER_POSITIONS = [
+  { x: 360, y: 473, angle: 1   },  // level 1
+  { x: 605, y: 600, angle: 7   },  // level 2
+  { x: 960, y: 510, angle: 0   },  // level 3
+  { x: 1200, y: 600, angle: 3  },  // level 4
+  { x: 1531, y: 523, angle: 0  },  // level 5
+];
 
-// centre X of each card (adjust spacing to match your drawn card slots):
-const LEVEL_CARD_Y = py(50);
-const LEVEL_CARD_W = px(13);
-const LEVEL_CARD_H = py(38);
-const LEVEL_CARDS_START_X = px(15);  // centre x of the first card
-const LEVEL_CARD_GAP      = px(17);  // gap between card centres
+//tasks
+const TASK_NAMES = [
+  "Tutorial",
+  "Basic Words",
+  "Simple Passages",
+  "More NESA\nPassages",
+  "Grand Finale"
+];
 
-// status text position (below cards)
-const STATUS_X = CX;
-const STATUS_Y = py(80);
+const TASK_DESCRIPTIONS = [
+  "Learn how to touch type.",
+  "Practice simple SE words until time is out.",
+  "Read through vocabulary passages",
+  "Challenging SE texts.",
+  "Put all your skills to the ultimate test!"
+];
+
+const CARD_W         = 352;
+const CARD_H         = 510;
+const CARD_SCALE     = 1;
+const CARD_HOVER_SCALE = 1.03;
+const TWEEN_DURATION = 130;
+
+const STATUS = { x: CX, y: py(94) };
 
 export default class levelSelectScene extends Phaser.Scene {
   constructor() { super("levelSelectScene"); }
 
   create() {
-    this.cameras.main.setBackgroundColor("#ffffff");
-    this.add.image(CX, CY, "ui-level-select-bg");
+    this.add.image(CX, CY, "level-select-bg");
 
-    // ── Tutorial button ─────────────────────────────────────────────
-    // Uses the hand-drawn button image positioned over your layout.
-    // The image is placed at the measured coordinates, then a hit zone sits on it.
-    const tutBtn = this.add.image(TUTORIAL_BTN_X, TUTORIAL_BTN_Y, "btn-start-tutorial")
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    tutBtn.on("pointerover",  () => tutBtn.setAlpha(0.8));
-    tutBtn.on("pointerout",   () => tutBtn.setAlpha(1));
-    tutBtn.on("pointerdown",  () => this.scene.start("tutorialScene"));
+    // ── Level paper cards ─────────────────────────────────────────
+    for (let i = 1; i <= 5; i++) {
+      this._placeCard(i, PAPER_POSITIONS[i - 1]);
+    }
 
-    // ── Level cards ────────────────────────────────────────────────
-    this._statusText = this.add.text(STATUS_X, STATUS_Y, "", {
-      fontFamily: "'Roboto Mono', monospace", fontSize: FONT.sm, color: COLORS.accent
+    // ── Status (loading indicator) ────────────────────────────────
+    this._status = this.add.text(STATUS.x, STATUS.y, "", {
+      fontFamily: "'custom-font', monospace",
+      fontSize:   FONT.sm,
+      color:      colours.main,
     }).setOrigin(0.5);
 
-    for (let i = 1; i <= 5; i++) {
-      this._drawCard(i, LEVEL_CARDS_START_X + (i - 1) * LEVEL_CARD_GAP, LEVEL_CARD_Y);
-    }
+    // ── Back arrow ────────────────────────────────────────────────
+    const btnBack = this.add
+      .image(CX - 810, CY - 440, "btn-go-back")
+      .setOrigin(0.5)
+      .setDepth(10)
+      .setScale(0.09)
+      .setInteractive({ useHandCursor: true });
 
-    // Back arrow / button — either a hit area over your drawn back button,
-    // or a programmatic button if your background doesn't include one
-    this.add.text(px(3), py(5), "←", {
-      fontFamily: "Arial", fontSize: FONT.lg, color: COLORS.dark
-    }).setInteractive({ useHandCursor: true }).on("pointerdown", () => this.scene.start("menuScene"));
+    btnBack.on("pointerover", () => btnBack.setScale(0.11));
+    btnBack.on("pointerout", () => btnBack.setScale(0.09));
+    btnBack.on("pointerdown",  () => this.scene.start("menuScene"));
   }
 
-  _drawCard(levelNum, x, y) {
+  _placeCard(levelNum, pos) {
     const unlocked = gameState.rankLevel >= levelNum;
     const pb       = gameState.PBs?.[String(levelNum)];
+    const taskName = TASK_NAMES[levelNum - 1] || `Level ${levelNum}`;
+    const taskDesc = TASK_DESCRIPTIONS[levelNum - 1] || "";
 
-    const gfx = this.add.graphics();
+    // Create a container to hold paper sheet, task name, and records
+    // Note: Inside a container, (0, 0) is the center of the container
+    const container = this.add.container(pos.x, pos.y);
+    container.setAngle(pos.angle);
 
-    if (unlocked) {
-      // Unlocked card: transparent fill with accent border
-      gfx.lineStyle(3, HEX.accent);
-      gfx.strokeRoundedRect(x - LEVEL_CARD_W / 2, y - LEVEL_CARD_H / 2,
-                            LEVEL_CARD_W, LEVEL_CARD_H, 12);
-
-      // "LEVEL N" label (only if your background doesn't already show it)
-      this.add.text(x, y - LEVEL_CARD_H / 2 + py(3), `LEVEL ${levelNum}`, {
-        fontFamily: "'Roboto Mono', monospace", fontSize: FONT.sm,
-        color: COLORS.dark, fontStyle: "bold"
-      }).setOrigin(0.5, 0);
-
-      if (pb) {
-        this.add.text(x, y + py(6), `PB: ${pb} WPM`, {
-          fontFamily: "'Roboto Mono', monospace", fontSize: FONT.xs, color: COLORS.muted
-        }).setOrigin(0.5);
-      }
-
-      // Make the whole card area clickable
-      const hit = this.add.zone(x, y, LEVEL_CARD_W, LEVEL_CARD_H)
-        .setInteractive({ useHandCursor: true });
-
-      hit.on("pointerover",  () => { gfx.clear(); gfx.lineStyle(4, HEX.accent); gfx.strokeRoundedRect(x - LEVEL_CARD_W/2, y - LEVEL_CARD_H/2, LEVEL_CARD_W, LEVEL_CARD_H, 12); });
-      hit.on("pointerout",   () => { gfx.clear(); gfx.lineStyle(3, HEX.accent); gfx.strokeRoundedRect(x - LEVEL_CARD_W/2, y - LEVEL_CARD_H/2, LEVEL_CARD_W, LEVEL_CARD_H, 12); });
-      hit.on("pointerdown",  () => this._loadLevel(levelNum));
-
-    } else {
-      // Locked card: dimmed border, lock emoji
-      gfx.lineStyle(2, HEX.muted);
-      gfx.strokeRoundedRect(x - LEVEL_CARD_W / 2, y - LEVEL_CARD_H / 2,
-                            LEVEL_CARD_W, LEVEL_CARD_H, 12);
-
-      this.add.text(x, y - LEVEL_CARD_H / 2 + py(3), `LEVEL ${levelNum}`, {
-        fontFamily: "'Roboto Mono', monospace", fontSize: FONT.sm, color: COLORS.muted
-      }).setOrigin(0.5, 0);
-
-      this.add.text(x, y, "🔒", { fontSize: "48px" }).setOrigin(0.5);
-
-      this.add.text(x, y + py(8), `Rank ${levelNum} required`, {
-        fontFamily: "Arial", fontSize: FONT.xs, color: COLORS.muted
-      }).setOrigin(0.5);
+    // ── Layer sorting logic — Swaps levels 3 and 4 so 3 overlaps 4 ──
+    let defaultDepth = levelNum;
+    if (levelNum === 3) {
+      defaultDepth = 4;
+    } else if (levelNum === 4) {
+      defaultDepth = 3;
     }
+    container.setDepth(defaultDepth);
+    // ─────────────────────────────────────────────────────────────────
+
+    // 1. The paper card image (centered at 0,0 inside container)
+    const cardImg = this.add.image(0, 0, `level-${levelNum}`)
+      .setOrigin(0.5)
+      .setDisplaySize(CARD_W, CARD_H);
+    container.add(cardImg);
+    
+    const baseTitleY = -CARD_H * 0.15 + 20;
+    const titleY = unlocked ? baseTitleY : baseTitleY + 80;
+
+    // 2. Task Name Text (positioned slightly upper half of paper)
+    const textTask = this.add.text(0, titleY, taskName, {
+      fontFamily: "'custom-font', monospace",
+      fontSize:   "18px",
+      fontWeight: "bold",
+      color:      "#4a4080",
+      align:      "center",
+      wordWrap:   { width: CARD_W - 20 }
+    }).setOrigin(0.5);
+    container.add(textTask);
+
+    const titleBottomY = textTask.y + (textTask.displayHeight / 2);
+    const textDesc = this.add.text(0, titleBottomY + 15, taskDesc, {
+      fontFamily: "'custom-font', monospace",
+      fontSize:   "13px",
+      color:      "#6b629c",
+      align:      "center",
+      wordWrap:   { width: CARD_W - 200 }
+    }).setOrigin(0.5, 0);
+    container.add(textDesc);
+
+    // 3. Handle Lock State vs Record State
+    if (!unlocked) {
+      // Dim the image and text if locked
+      textDesc.setAlpha(0.4);
+      textTask.setAlpha(0.4);
+
+      // Add lock emoji right in the center
+      const lockIcon = this.add.image(0, -45, "icon-lock")
+      .setScale(0.03)
+      .setOrigin(0.5);
+      container.add(lockIcon);
+      return; 
+    }
+
+    // 4. PB text on unlocked card (positioned on lower half of paper)
+    if (pb) {
+      const textPB = this.add.text(0, CARD_H * 0.25, `PB: ${pb} WPM`, {
+        fontFamily: "'custom-font', monospace",
+        fontSize:   "16px",
+        color:      "#b1afb0",
+      }).setOrigin(0.5);
+      container.add(textPB);
+    } else {
+      // Optional: default text if they haven't played it yet
+      const textNoPB = this.add.text(0, CARD_H * 0.25, "Not Played", {
+        fontFamily: "'custom-font', monospace",
+        fontSize:   "14px",
+        color:      "#888888",
+      }).setOrigin(0.5);
+      container.add(textNoPB);
+    }
+
+    // 5. Make the hit-area interactive based on the card image's dimensions
+    container.setInteractive(
+      new Phaser.Geom.Rectangle(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H), 
+      Phaser.Geom.Rectangle.Contains
+    );
+    container.input.cursor = 'pointer';
+
+    // ── Hover: scale the entire container ─────────────────────────
+    container.on("pointerover", () => {
+      this.tweens.killTweensOf(container);
+      
+      // REMOVED: container.setDepth(20) has been removed so depths stay locked!
+      
+      this.tweens.add({
+        targets:  container,
+        scaleX:   CARD_HOVER_SCALE,
+        scaleY:   CARD_HOVER_SCALE,
+        duration: TWEEN_DURATION,
+        ease:     "Sine.easeOut",
+      });
+    });
+
+    // ── Pointer out: scale back down ─────────────────────────
+    container.on("pointerout", () => {
+      this.tweens.killTweensOf(container);
+      
+      this.tweens.add({
+        targets:  container,
+        scaleX:   CARD_SCALE,
+        scaleY:   CARD_SCALE,
+        duration: TWEEN_DURATION,
+        ease:     "Sine.easeOut",
+      });
+    });
+
+    // ── Click: trigger level loading ─────────────────────────
+    container.on("pointerdown", () => this._loadLevel(levelNum));
   }
 
   async _loadLevel(levelNum) {
-    this._statusText.setText("Loading assignment...");
+    this._status.setText("Loading assignment...");
+    this.input.enabled = false;
+
     try {
       const res = await axios.get(`/api/levels/${levelNum}`, { headers: authHeader() });
       Object.assign(gameState, {
@@ -117,7 +205,8 @@ export default class levelSelectScene extends Phaser.Scene {
       });
       this.scene.start("gameScene");
     } catch (err) {
-      this._statusText.setText(err.response?.data?.message || "Failed to load level.");
+      this._status.setText(err.response?.data?.message || "Failed to load. Try again.");
+      this.input.enabled = true;
     }
   }
 }

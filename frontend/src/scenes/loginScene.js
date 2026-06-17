@@ -2,186 +2,254 @@ import Phaser from "phaser";
 import axios from "axios";
 import { saveSession } from "../utils/auth.js";
 import { gameState } from "../utils/gameState.js";
- 
+import { px, py, CX, CY, GW, GH } from "../utils/scale.js";
+
 export default class loginScene extends Phaser.Scene {
   constructor() {
     super("loginScene");
   }
- 
-  // Phaser passes scene init data as the first argument to create().
-  // When menuScene calls this.scene.start("loginScene", { mode: "login" }),
-  // that object arrives here as `sceneData`.
+
   create(sceneData) {
-    // FIX: was `const isSignUp = data.mode === "signup"` but `data` was not defined.
-    // sceneData is the correct parameter name matching what Phaser provides.
-    // Fallback to 'login' if mode isn't provided.
-    const mode     = sceneData?.mode || 'login';
-    const isSignUp = mode === 'signup';
- 
-    this.add.text(400, 60, isSignUp ? "CREATE ACCOUNT" : "WELCOME BACK", {
-      fontSize: "34px", fill: "#e94560", fontStyle: "bold"
-    }).setOrigin(0.5);
- 
-    // Build the correct HTML form based on mode.
-    // We use a single create() and build form HTML dynamically — this replaces
-    // having two create() methods, which is illegal in JavaScript classes.
-    const formHTML = isSignUp ? this._signUpFormHTML() : this._loginFormHTML();
- 
-    // this.add.dom() injects real HTML into the DOM overlay Phaser created.
-    // The (400, 330) coordinates centre the form on the canvas.
-    const domContainer = this.add.dom(400, 330).createFromHTML(formHTML);
- 
-    // Store domContainer on `this` so the submit handler can destroy it
-    this._dom = domContainer;
- 
-    document.getElementById("submit-btn").addEventListener("click", () => {
-      if (isSignUp) {
-        this._handleSignUp();
+    const mode = sceneData?.mode || "login";
+    this._isSignUp = mode === "signup";
+
+    // 1. Animated Background Setup
+    if (!this.anims.exists("bg_animation")) {
+      this.anims.create({
+        key: "bg_animation",
+        frames: this.anims.generateFrameNumbers("background", { start: 0, end: 6 }),
+        frameRate: 5,
+        repeat: -1,
+      });
+    }
+
+    const bg = this.add.sprite(0, 0, "background").setOrigin(0, 0);
+    bg.setDisplaySize(GW, GH);
+    bg.play("bg_animation");
+    bg.setDepth(-1);
+
+    // 2. ID Card Texture Base
+    const cardKey = this._isSignUp ? "signup-card" : "login-card";
+    this.add.image(CX, CY, cardKey).setOrigin(0.5, 0.5).setDepth(2);
+
+    // 3. Form Input State Configuration
+    if (this._isSignUp) {
+      this._inputValues = { name: "", username: "", email: "", password: "", confirmPass: "" };
+      this._fieldsOrder = ["name", "username", "email", "password", "confirmPass"];
+      this._activeField = "name";
+    } else {
+      this._inputValues = { username: "", password: "" };
+      this._fieldsOrder = ["username", "password"];
+      this._activeField = "username";
+    }
+    this._cursorVisible = true;
+
+    // 4. Input Field Styling Parameters
+    const inputStyle = {
+      fontFamily: "custom-font",
+      fontSize: this._isSignUp ? "18px" : "22px",
+      fontWeight: "bold"
+    };
+
+    this._textObjects = {};
+    this._hitZones = [];
+
+    // Define positions dynamically based on screen state profiles
+    const yOffsets = this._isSignUp 
+      ? [-110, -40, 29, 98, 164] 
+      : [-5, 110];               
+
+    // Build fields dynamically
+    this._fieldsOrder.forEach((fieldName, index) => {
+      const yPos = CY + yOffsets[index];
+      const placeholderText = "Enter " + fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+
+      // Create Phaser canvas text instance
+      this._textObjects[fieldName] = this.add.text(CX - 10, yPos, placeholderText, { ...inputStyle, color: "#8c7ec088" })
+        .setOrigin(0, 0.5)
+        .setDepth(5);
+
+      // Create matching precise interactive mouse hit zone area
+      const zone = this.add.zone(CX - 10, yPos, 320, this._isSignUp ? 38 : 50)
+        .setOrigin(0, 0.5)
+        .setInteractive({ useHandCursor: true });
+      
+      zone.on("pointerdown", () => this._switchField(fieldName));
+      this._hitZones.push(zone);
+    });
+
+    // ── FIXED ERROR TEXT CONFIGURATION (WITH LEFT SHIFT & WORD WRAP) ───
+    const errorY = this._isSignUp ? CY + 205 : CY + 149;
+    
+    this.errorText = this.add.text(CX - 10, errorY, "", { 
+      fontFamily: "custom-font", 
+      fontSize: "15px", 
+      color: "#929292",
+      wordWrap: { width: 320, useAdvancedWrap: true } // Wraps perfectly across the line width
+    })
+    .setOrigin(0, 0) // Shifted to left-top alignment to prevent text overlap jumps
+    .setDepth(5);
+
+    // 5. Blinking Cursor Loop Engine
+    this.time.addEvent({
+      delay: 530,
+      callback: () => {
+        this._cursorVisible = !this._cursorVisible;
+        this._updateVisualTexts();
+      },
+      loop: true
+    });
+
+    // Set initial layout state focus safely
+    this._switchField(this._activeField);
+
+    // 6. Global Keyboard Event Interceptor
+    this.input.keyboard.on("keydown", (event) => this._handleTyping(event));
+
+    // 7. Interface Controls (Back & Submit Buttons)
+    const btnBack = this.add
+      .image(CX - 810, CY - 440, "btn-go-back")
+      .setOrigin(0.5)
+      .setDepth(10)
+      .setScale(0.09)
+      .setInteractive({ useHandCursor: true });
+
+    const buttonKey = this._isSignUp ? "btn-signup" : "btn-loginconfirm";
+
+    const btnSubmit = this.add
+      .image(CX + 270, CY + 230, buttonKey)
+      .setOrigin(0.5)
+      .setDepth(10)
+      .setInteractive({ useHandCursor: true });
+
+    btnSubmit.on("pointerdown", () => {
+      if (this._isSignUp) this._handleSignUp(); else this._handleLogin();
+    });
+
+    btnBack.on("pointerdown", () => this.scene.start("menuScene"));
+
+    // Button animations
+    btnSubmit.on("pointerover", () => btnSubmit.setScale(1.1));
+    btnSubmit.on("pointerout", () => btnSubmit.setScale(1));
+    btnBack.on("pointerover", () => btnBack.setScale(0.11));
+    btnBack.on("pointerout", () => btnBack.setScale(0.09));
+  }
+
+  // --- CORE ENGINE UTILITIES ---
+
+  _switchField(field) {
+    this._activeField = field;
+    this.errorText.setText("");
+    this._updateVisualTexts();
+  }
+
+  _handleTyping(event) {
+    let currentText = this._inputValues[this._activeField];
+
+    if (event.key === "Backspace") {
+      currentText = currentText.slice(0, -1);
+    } else if (event.key === "Tab") {
+      event.preventDefault(); 
+      const currentIndex = this._fieldsOrder.indexOf(this._activeField);
+      const nextIndex = (currentIndex + 1) % this._fieldsOrder.length;
+      this._switchField(this._fieldsOrder[nextIndex]);
+      return;
+    } else if (event.key === "Enter") {
+      if (this._isSignUp) this._handleSignUp(); else this._handleLogin();
+      return;
+    } else if (event.key.length === 1) {
+      const maxLen = this._activeField === "email" ? 24 : 16;
+      if (currentText.length < maxLen) {
+        currentText += event.key;
+      }
+    }
+
+    this._inputValues[this._activeField] = currentText;
+    this._updateVisualTexts();
+  }
+
+  _updateVisualTexts() {
+    const cursor = this._cursorVisible ? "|" : " ";
+
+    this._fieldsOrder.forEach((fieldName) => {
+      const rawValue = this._inputValues[fieldName];
+      const textObj = this._textObjects[fieldName];
+      const isPasswordType = fieldName === "password" || fieldName === "confirmPass";
+      const niceLabel = "Enter " + fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+
+      if (rawValue === "") {
+        if (this._activeField === fieldName) {
+          textObj.setText(cursor).setColor("#8c7ec0");
+        } else {
+          textObj.setText(niceLabel).setColor("#8c7ec088");
+        }
       } else {
-        this._handleLogin();
+        const displayValue = isPasswordType ? "•".repeat(rawValue.length) : rawValue;
+        const completeString = displayValue + (this._activeField === fieldName ? cursor : "");
+        textObj.setText(completeString).setColor("#8c7ec0");
       }
     });
- 
-    document.getElementById("back-btn").addEventListener("click", () => {
-      this._cleanup();
-      this.scene.start("menuScene");
-    });
   }
- 
-  // ── Form HTML templates ───────────────────────────────────────────────────
- 
-  _loginFormHTML() {
-    return `
-      <div style="display:flex; flex-direction:column; align-items:center;">
-        <input type="text"     id="userName"  placeholder="Username" /><br/>
-        <input type="password" id="passInput" placeholder="Password" /><br/>
-        <button id="submit-btn" class="form-btn">Sign In</button><br/>
-        <span   id="back-btn"  class="form-link">← Back to menu</span>
-        <p id="error-msg" style="color:#e94560; font-size:14px; min-height:20px;"></p>
-      </div>
-    `;
-  }
- 
-  _signUpFormHTML() {
-    return `
-      <div style="display:flex; flex-direction:column; align-items:center;">
-        <input type="text"     id="name"        placeholder="Full Name" /><br/>
-        <input type="text"     id="userName"    placeholder="Username" /><br/>
-        <input type="email"    id="userEmail"   placeholder="Email" /><br/>
-        <input type="password" id="passInput"   placeholder="Password" /><br/>
-        <input type="password" id="confirmPass" placeholder="Confirm Password" /><br/>
-        <button id="submit-btn" class="form-btn">Create Account</button><br/>
-        <span   id="back-btn"  class="form-link">← Back to menu</span>
-        <p id="error-msg" style="color:#e94560; font-size:14px; min-height:20px;"></p>
-      </div>
-    `;
-  }
- 
-  // ── Submit handlers ───────────────────────────────────────────────────────
- 
+
+  // --- AUTHENTICATION ROUTERS ---
+
   async _handleLogin() {
-    const userName  = document.getElementById("userName")?.value.trim();
-    const passInput = document.getElementById("passInput")?.value;
- 
+    const userName = this._inputValues.username.trim();
+    const passInput = this._inputValues.password;
+
     if (!userName || !passInput) {
-      document.getElementById("error-msg").textContent = "Please fill in all fields.";
+      this.errorText.setText("Please fill in all fields.");
       return;
     }
- 
+
     try {
-      // axios.post sends a JSON body and returns the parsed response as res.data.
-      // The Vite proxy forwards /api/... to http://localhost:5000/api/...
-      const res = await axios.post("/api/auth/login", {
-        username: userName,
-        password: passInput,
-      });
- 
+      const res = await axios.post("/api/auth/login", { username: userName, password: passInput });
       this._onAuthSuccess(res.data);
- 
     } catch (err) {
-      const msg = err.response?.data?.message || "Login failed. Check your credentials.";
-      document.getElementById("error-msg").textContent = msg;
+      this.errorText.setText(err.response?.data?.message || "Login failed.");
     }
   }
- 
+
   async _handleSignUp() {
-    const name        = document.getElementById("name")?.value.trim();
-    const userName    = document.getElementById("userName")?.value.trim();
-    const userEmail   = document.getElementById("userEmail")?.value.trim();
-    const passInput   = document.getElementById("passInput")?.value;
-    const confirmPass = document.getElementById("confirmPass")?.value;
- 
+    const name = this._inputValues.name.trim();
+    const userName = this._inputValues.username.trim();
+    const userEmail = this._inputValues.email.trim();
+    const passInput = this._inputValues.password;
+    const confirmPass = this._inputValues.confirmPass;
+
     if (!name || !userName || !userEmail || !passInput || !confirmPass) {
-      document.getElementById("error-msg").textContent = "Please fill in all fields.";
+      this.errorText.setText("Please fill in all fields.");
       return;
     }
- 
+
     if (passInput !== confirmPass) {
-      document.getElementById("error-msg").textContent = "Passwords do not match.";
+      this.errorText.setText("Passwords do not match.");
       return;
     }
- 
+
     try {
-      // FIX: was only sending username+password. Now sends all required fields.
       await axios.post("/api/auth/signup", {
         name,
-        username:    userName,
-        email:       userEmail,
-        password:    passInput,
+        username: userName,
+        email: userEmail,
+        password: passInput,
         confirmPass: confirmPass,
       });
- 
-      // After signup, automatically log in so the user lands on the menu
-      const loginRes = await axios.post("/api/auth/login", {
-        username: userName,
-        password: passInput,
-      });
- 
+
+      const loginRes = await axios.post("/api/auth/login", { username: userName, password: passInput });
       this._onAuthSuccess(loginRes.data);
- 
     } catch (err) {
-      const msg = err.response?.data?.message || "Sign-up failed. Try a different username or email.";
-      document.getElementById("error-msg").textContent = msg;
+      this.errorText.setText(err.response?.data?.message || "Sign-up failed.");
     }
   }
- 
-  // ── Shared post-auth handler ──────────────────────────────────────────────
- 
+
   _onAuthSuccess(data) {
-    // Save token and user data to localStorage for persistence across page refreshes
-    saveSession(data.token, {
-      userId: data.userId,
-      name:   data.name,
-      role:   data.role,
-    }, data.playerStats);
- 
-    // Populate gameState so the next scene has immediate access
+    saveSession(data.token, { userId: data.userId, name: data.name, role: data.role }, data.playerStats);
     Object.assign(gameState, {
-      userId:      data.userId,
-      name:        data.name,
-      role:        data.role,
-      rankLevel:   data.playerStats.rankLevel,
-      xpTotal:     data.playerStats.xpTotal,
-      coinBalance: data.playerStats.coinBalance,
-      finLevels:   data.playerStats.finLevels,
-      PBs:         data.playerStats.PBs,
+      userId: data.userId, name: data.name, role: data.role,
+      rankLevel: data.playerStats.rankLevel, xpTotal: data.playerStats.xpTotal,
+      coinBalance: data.playerStats.coinBalance, finLevels: data.playerStats.finLevels, PBs: data.playerStats.PBs,
     });
- 
-    this._cleanup();
     this.scene.start("menuScene");
-  }
- 
-  // ── Cleanup ───────────────────────────────────────────────────────────────
- 
-  _cleanup() {
-    // IMPORTANT: destroys the DOM element when leaving the scene.
-    // Without this, the HTML form persists on top of the next scene.
-    if (this._dom) this._dom.destroy();
-  }
- 
-  // Phaser calls shutdown() when a scene stops. Use it to guarantee cleanup
-  // even if the scene transitions happen unexpectedly.
-  shutdown() {
-    this._cleanup();
   }
 }

@@ -12,7 +12,6 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// deletes caches from old versions so stale files don't linger.
 self.addEventListener("activate", (event) => {
   const KEEP = [STATIC_CACHE, ASSET_CACHE];
   event.waitUntil(
@@ -25,11 +24,14 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  const { pathname } = new URL(event.request.url);
+  const url = new URL(event.request.url);
+  if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+    return; 
+  }
 
-  if (pathname.startsWith("/api/")) return;
+  if (url.pathname.startsWith("/api/")) return;
 
-  if (pathname.startsWith("/assets/")) {
+  if (url.pathname.startsWith("/assets/")) {
     event.respondWith(cacheFirst(event.request, ASSET_CACHE));
     return;
   }
@@ -44,17 +46,20 @@ async function cacheFirst(request, cacheName) {
 
   try {
     const response = await fetch(request);
-    if (response.ok) cache.put(request, response.clone());
+    if (response.ok && response.type !== "opaque") {
+      cache.put(request, response.clone());
+    }
     return response;
   } catch {
     if (request.headers.get("Accept")?.includes("text/html")) {
       return new Response(
         `<html><body style="font-family:Georgia;text-align:center;padding:80px;background:#fafaf8">
-          <h1 style="font-size:42px">The Typing Times</h1>
+          <h1>The Typing Times</h1>
           <p style="color:#888">You're offline. Reconnect to keep typing.</p>
         </body></html>`,
         { headers: { "Content-Type": "text/html" } }
       );
     }
+    return new Response("", { status: 408, statusText: "Offline" });
   }
 }

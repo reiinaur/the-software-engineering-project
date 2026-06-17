@@ -1,67 +1,57 @@
 import Phaser from "phaser";
 import axios from "axios";
-import { GW, GH, CX, CY, FONT, COLORS, HEX, px, py } from "../utils/scale.js";
-import { authHeader, getStats, updateStats, getShopState } from "../utils/auth.js";
+import { CX, CY, GW, GH, colours, HEX, px, py } from "../utils/scale.js";
+import { authHeader, getStats, updateStats } from "../utils/auth.js";
 import { gameState } from "../utils/gameState.js";
-import { renderMascot } from "../utils/shopUtils.js";
 
-// complete screen layout
+// Success/Newspaper Screen Layout
 const C = {
-  HEADER_X:      CX,          // "Article Complete!" header image centre
-  HEADER_Y:      py(62),
+  // Newspaper Text Area (Left)
+  PAPER_X: px(7),           // Start of text
+  PAPER_W: px(43),          // Slightly narrowed width wrapping to adjust for rightward shifts
+  
+  MASTHEAD_Y: py(12),       // "The Typing Times"
+  INFO_BAR_X: px(12),       // Shifted to line up with the card border
+  INFO_BAR_Y: py(39),       // By [user] | Title | Date
+  HEADLINE_X: px(12),       // Shifted to the right a bit
+  HEADLINE_Y: py(50),       // Bold Title
+  BODY_X: px(12),           // Shifted to the right a bit
+  BODY_Y: py(58),           // Start of passage text
 
-  BYLINE_X:      px(5),       // "By [name]" text
-  BYLINE_Y:      py(19),
-  TOPIC_X:       CX,          // article title text (centred)
-  TOPIC_Y:       py(19),
-  DATE_X:        px(95),      // date text (right-aligned)
-  DATE_Y:        py(19),
+  TEXT_ANGLE: -0.8,
 
-  COL1_X:        px(5),       // article text left column
-  COL1_Y:        py(23),
-  COL1_W:        px(42),      // width of left column
-  COL2_X:        px(52),      // article text right column
-  COL2_Y:        py(23),
-  COL2_W:        px(42),
-  COL_H:         py(33),      // max height before cutting off
-
-  STAT_ROW_Y:    py(74),      // y of the four stat boxes
-  STAT_WPM_X:    px(22),
-  STAT_ACC_X:    px(38),
-  STAT_XP_X:     px(54),
-  STAT_SCORE_X:  px(70),
-
-  BTN_NEXT_X:    px(36),      // "Go Next" button centre
-  BTN_NEXT_Y:    py(89),
-  BTN_RETRY_X:   px(64),      // "Try Again" button centre
-  BTN_RETRY_Y:   py(89),
+  // Stats Sidebar (Right)
+  SIDEBAR_X: px(81),        // Center of the sidebar
+  HEADER_Y: py(25),         // "Article Complete!"
+  
+  STAT_START_Y: py(48),     // Base stat Y when PB is present
+  STAT_SPACING: py(6),      // Gap between rows
+  
+  BTN_Y: py(75),            // Button row
 };
 
-// failed screen layout
+// Failed Screen Layout
 const F = {
-  HEADER_X:      CX,
-  HEADER_Y:      py(20),
-  MASCOT_X:      CX,
-  MASCOT_Y:      py(50),
-  MASCOT_SCALE:  0.30,
-
-  STAT_ROW_Y:    py(74),
-  STAT_WPM_X:    px(22),
-  STAT_ACC_X:    px(38),
-  STAT_XP_X:     px(54),
-  STAT_SCORE_X:  px(70),
-
-  BTN_RETRY_X:   px(36),
-  BTN_RETRY_Y:   py(89),
-  BTN_HOME_X:    px(64),
-  BTN_HOME_Y:    py(89),
+  HEADER_Y: py(25),
+  PIGEON_X: CX,
+  PIGEON_Y: CY,
+  STAT_Y: py(71),           // Shifted up for button breathing room
+  BTN_Y: py(86),            // Explicit button Y row placement
 };
+
+// Font Constants
+const FONT_FAMILY = '"Courier Prime", "Courier New", monospace';
+const HEADLINE_FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif'; // Clean, ultra-bold headline choice
+const THEME_COLOR = "#7767a9"; // Unified newspaper header color
 
 export default class resultsScene extends Phaser.Scene {
   constructor() { super("resultsScene"); }
 
   async create() {
     const r = gameState.lastResult;
+    
+    // Register animations locally in this scene to ensure they play correctly
+    this._createPigeonAnimations();
 
     if (r.deadlineMet) {
       this._buildCompleteScreen(r);
@@ -69,149 +59,181 @@ export default class resultsScene extends Phaser.Scene {
       this._buildFailedScreen(r);
     }
 
-    // Save score (both paths)
     await this._saveScore(r);
   }
 
-  // success screen
+  _createPigeonAnimations() {
+    const sets = [
+        { key: "anim-pigeon-failed", asset: "pigeon-failed" },
+        { key: "anim-header-failed", asset: "mission-failed" },
+        { key: "anim-header-success", asset: "article-complete" }
+    ];
+
+    sets.forEach(set => {
+      if (!this.anims.exists(set.key)) {
+        this.anims.create({
+          key: set.key,
+          frames: this.anims.generateFrameNumbers(set.asset, { start: 0, end: 1 }),
+          frameRate: 2,
+          repeat: -1
+        });
+      }
+    });
+  }
+
+  // --- SUCCESS / NEWSPAPER SCREEN ---
   _buildCompleteScreen(r) {
-    this.cameras.main.setBackgroundColor("#fafaf8");
-    this.add.image(CX, CY, "ui-results-complete-bg");
+    this.cameras.main.setBackgroundColor('#e6ba88');
+    this.add.image(CX, CY, "newspaper"); 
 
-    // ── Byline row (dynamic text over drawn dividers) ──────────────
-    const today = new Date().toLocaleDateString("en-AU", {
-      day: "numeric", month: "long", year: "numeric"
-    });
-    this.add.text(C.BYLINE_X, C.BYLINE_Y, `By ${gameState.name || "Anonymous"}`, {
-      fontFamily: "Georgia, serif", fontSize: "22px", color: COLORS.dark
-    });
-    this.add.text(C.TOPIC_X, C.TOPIC_Y, gameState.articleTitle || "Article", {
-      fontFamily: "Georgia, serif", fontSize: "22px", color: COLORS.dark, fontStyle: "italic"
-    }).setOrigin(0.5, 0);
-    this.add.text(C.DATE_X, C.DATE_Y, today, {
-      fontFamily: "Georgia, serif", fontSize: "20px", color: COLORS.muted
-    }).setOrigin(1, 0);
-
-    // ── Passage as newspaper article body ─────────────────────────
-    // Shows the article the player just typed — displayed as the published piece.
-    const passage = gameState.passage || "";
-
-    this.add.text(C.COL1_X, C.COL1_Y, passage, {
-      fontFamily: "Georgia, serif", fontSize: "20px", color: COLORS.dark,
-      wordWrap: { width: C.COL1_W }, lineSpacing: 5,
-    }).setFixedSize(C.COL1_W, C.COL_H);
-
-    // Approximate chars that fit column 1, show remainder in column 2
-    const charsPerLine = Math.floor(C.COL1_W / 11);
-    const linesInCol   = Math.floor(C.COL_H / 25);
-    const charLimit    = charsPerLine * linesInCol;
-    if (passage.length > charLimit) {
-      this.add.text(C.COL2_X, C.COL2_Y, passage.slice(charLimit), {
-        fontFamily: "Georgia, serif", fontSize: "20px", color: COLORS.dark,
-        wordWrap: { width: C.COL2_W }, lineSpacing: 5,
-      }).setFixedSize(C.COL2_W, C.COL_H);
+    // updates local game state PBs so level select displays it immediately
+    if (r.isPB) {
+      if (!gameState.PBs) gameState.PBs = {};
+      gameState.PBs[String(r.levelNumber)] = r.wpm;
     }
 
-    // ── Hand-drawn "Article Complete!" header ─────────────────────
-    this.add.image(C.HEADER_X, C.HEADER_Y, "header-article-complete").setOrigin(0.5);
+    // Info Bar (By [User] | [Title] | [Time]) with tabbed formatting to space across the entire section
+    const infoText = `By ${gameState.name || "User"}\t\t\t|\t\t\t${gameState.articleTitle || "Session"}\t\t\t|\t\t\t${r.wpm} WPM`;
+    this.add.text(C.INFO_BAR_X, C.INFO_BAR_Y, infoText, {
+      fontFamily: FONT_FAMILY, fontSize: "30px", color: THEME_COLOR, fontStyle: "bold"
+    })
+    .setAngle(C.TEXT_ANGLE);
+
+    // ── FIXED HEADLINE: Switched to thick Helvetica with fake bold stroke fail-safe ──
+    this.add.text(C.HEADLINE_X, C.HEADLINE_Y, gameState.articleTitle || "Article Complete", {
+      fontFamily: HEADLINE_FONT, 
+      fontSize: "42px", 
+      color: THEME_COLOR, 
+      fontStyle: "bold",
+      stroke: THEME_COLOR,
+      strokeThickness: 1.5 // Outlines itself to guarantee a heavy, thick appearance
+    })
+    .setAngle(C.TEXT_ANGLE);
+
+    this.add.text(C.BODY_X, C.BODY_Y, gameState.passage, {
+      fontFamily: FONT_FAMILY, fontSize: "30px", color: THEME_COLOR, fontStyle: "bold",
+      wordWrap: { width: C.PAPER_W },
+      lineSpacing: 4
+    })
+    .setAngle(C.TEXT_ANGLE);
+
+    // 2. Stats Side (Right)
+    this.add.sprite(C.SIDEBAR_X, C.HEADER_Y, "article-complete").play("anim-header-success").setScale(0.4);
+
+    // Conditional layout adjusting logic: If no new PB occurs, shift the vertical list coordinates up
+    let dynamicStatStartY = C.STAT_START_Y;
+    
+    // ── SHIFT LOGIC ADJUSTMENTS ──
+    let statsX = C.SIDEBAR_X - 70;
+    let valuesX = C.SIDEBAR_X + 85;
 
     if (r.isPB) {
-      this.add.text(C.HEADER_X, C.HEADER_Y + py(5), "★  New Personal Best!", {
-        fontFamily: "Arial", fontSize: FONT.sm, color: "#888800", fontStyle: "bold"
-      }).setOrigin(0.5);
+        this.add.text(C.SIDEBAR_X, C.HEADER_Y + 156, "★ NEW PB!", {
+            fontFamily: "custom-font", fontSize: "20px", color: "#9d8ecb", fontStyle: "bold"
+        }).setOrigin(0.5);
+    } else {
+        // Shifting stats row slightly higher since the PB banner is omitted
+        dynamicStatStartY -= py(6);
+        
+        // Apply your custom alignment corrections (+3px right, +2px down) when there is NO PB
+        statsX += 3;
+        valuesX += 3;
+        dynamicStatStartY += 2;
     }
+    
+    this._statRow(statsX, valuesX, dynamicStatStartY, "WPM", String(r.wpm));
+    this._statRow(statsX, valuesX, dynamicStatStartY + C.STAT_SPACING, "ACC", `${r.accuracy}%`);
+    this._statRow(statsX, valuesX, dynamicStatStartY + C.STAT_SPACING * 2, "XP", `+${r.xpGain}`);
+    
+    const totalScore = Math.round(r.wpm * (r.accuracy / 100) * 100);
+    this._statRow(statsX, valuesX, dynamicStatStartY + C.STAT_SPACING * 3, "SCORE", String(totalScore));
 
-    // ── Stats (Phaser text — only numbers, no decorative labels) ──
-    const score = Math.round(r.wpm * (r.accuracy / 100) * 1.5 * 100);
-    this._stat(C.STAT_WPM_X,   C.STAT_ROW_Y, String(r.wpm));
-    this._stat(C.STAT_ACC_X,   C.STAT_ROW_Y, `${r.accuracy}%`);
-    this._stat(C.STAT_XP_X,    C.STAT_ROW_Y, `+${r.xpGain}`);
-    this._stat(C.STAT_SCORE_X, C.STAT_ROW_Y, String(score));
-
-    // ── Buttons (hand-drawn images) ────────────────────────────────
-    this._imageBtn(C.BTN_NEXT_X,  C.BTN_NEXT_Y,  "btn-go-next",   () => this.scene.start("levelSelectScene"));
-    this._imageBtn(C.BTN_RETRY_X, C.BTN_RETRY_Y, "btn-try-again", () => this.scene.start("gameScene"));
+    // Hand-drawn buttons (Scaled down to 0.3)
+    this._imageBtn(C.SIDEBAR_X - 70, C.BTN_Y, "btn-try-again", () => this.scene.start("gameScene")).setScale(0.3);
+    this._imageBtn(C.SIDEBAR_X + 70, C.BTN_Y, "btn-go-home", () => this.scene.start("menuScene")).setScale(0.3);
   }
 
   // failed screen
   _buildFailedScreen(r) {
-    this.cameras.main.setBackgroundColor("#1a1a2e");
-    this.add.image(CX, CY, "ui-results-failed-bg");
-    this.add.image(F.HEADER_X, F.HEADER_Y, "header-mission-failed").setOrigin(0.5);
+    this.add.image(CX, CY, "failed-bg");
+    
+    // Header setup as an animated sprite at 2 FPS
+    this.add.sprite(CX, F.HEADER_Y, "mission-failed").play("anim-header-failed").setScale(0.4);
 
-    // sad pigeon :(
-    renderMascot(this, F.MASCOT_X, F.MASCOT_Y, F.MASCOT_SCALE, "fail");
+    // Sad Pigeon Animation
+    this.pigeon = this.add.sprite(F.PIGEON_X, F.PIGEON_Y + 10, "pigeon-failed").setScale(0.25);
+    this.pigeon.play("anim-pigeon-failed");
 
-    // Stats (even on fail, show what the player achieved — no SCORE on fail)
-    this._stat(F.STAT_WPM_X,   F.STAT_ROW_Y, String(r.wpm),         "#ffffff");
-    this._stat(F.STAT_ACC_X,   F.STAT_ROW_Y, `${r.accuracy}%`,       "#ffffff");
-    this._stat(F.STAT_XP_X,    F.STAT_ROW_Y, `+0`,                   COLORS.muted);
-    this._stat(F.STAT_SCORE_X, F.STAT_ROW_Y, "—",                    COLORS.muted);
+    // Horizontal Stat Row (Shifted up to F.STAT_Y for clean layout layout clearance)
+    const stats = [
+        { label: "WPM", val: r.wpm },
+        { label: "ACC", val: `${r.accuracy}%` },
+        { label: "XP", val: "+0" }
+    ];
 
-    this._imageBtn(F.BTN_RETRY_X, F.BTN_RETRY_Y, "btn-try-again", () => this.scene.start("gameScene"));
-    this._imageBtn(F.BTN_HOME_X,  F.BTN_HOME_Y,  "btn-go-home",   () => this.scene.start("menuScene"));
+    stats.forEach((s, i) => {
+        const x = CX + (i - 1) * 150;
+        this.add.text(x, F.STAT_Y, s.label, { fontFamily: FONT_FAMILY, fontSize: "16px", color: "#aaa" }).setOrigin(0.5);
+        this.add.text(x, F.STAT_Y + 25, s.val, { fontFamily: FONT_FAMILY, fontSize: "22px", color: "#fff", fontStyle: "bold" }).setOrigin(0.5);
+    });
+
+    // Shrunk down to 0.3 layout scale profiles
+    this._imageBtn(CX - 100, F.BTN_Y, "btn-try-again", () => this.scene.start("gameScene")).setScale(0.3);
+    this._imageBtn(CX + 100, F.BTN_Y, "btn-go-home", () => this.scene.start("menuScene")).setScale(0.3);
   }
 
-  // save score
-  async _saveScore(r) {
-    // Show a small status indicator in a consistent corner
-    const saveLbl = this.add.text(GW - 24, GH - 24, "saving...", {
-      fontFamily: "Arial", fontSize: "18px", color: COLORS.muted
-    }).setOrigin(1, 1);
+  // --- HELPERS ---
 
+  // ── FIXED STAT ROW: Added fontStyle and stroke to labels and values to look thicker ──
+  _statRow(lx, rx, y, label, value) {
+    this.add.text(lx, y, label, {
+      fontFamily: FONT_FAMILY, 
+      fontSize: "20px", 
+      color: THEME_COLOR,
+      fontStyle: "bold",
+      stroke: THEME_COLOR,
+      strokeThickness: 0.5 // Subtle stroke multiplier to make label heavier
+    }).setOrigin(0, 0.5);
+
+    this.add.text(rx, y, value, {
+      fontFamily: FONT_FAMILY, 
+      fontSize: "20px", 
+      color: THEME_COLOR, 
+      fontStyle: "bold",
+      stroke: THEME_COLOR,
+      strokeThickness: 0.8 // Slightly thicker stroke to make user numbers pop!
+    }).setOrigin(1, 0.5);
+  }
+
+  _imageBtn(x, y, key, callback) {
+    const btn = this.add.image(x, y, key).setInteractive({ useHandCursor: true });
+    btn.on("pointerover", () => btn.setAlpha(0.8));
+    btn.on("pointerout", () => btn.setAlpha(1));
+    btn.on("pointerdown", callback);
+    return btn;
+  }
+
+  async _saveScore(r) {
     try {
       const res = await axios.post("/api/stats/submit-score", {
         levelNumber: r.levelNumber,
-        wpm:         r.wpm,
-        accuracy:    r.accuracy,
-        xpGain:      r.deadlineMet ? r.xpGain : 0,  // no XP on fail
+        wpm: r.wpm,
+        accuracy: r.accuracy,
+        xpGain: r.deadlineMet ? r.xpGain : 0,
         coinsEarned: r.deadlineMet ? r.coinsEarned : 0,
         deadlineMet: r.deadlineMet,
       }, { headers: authHeader() });
 
-      saveLbl.setText("✓ Saved").setStyle({ color: COLORS.success });
-
-      const bal   = res.data.new_balances;
-      const stats = getStats();
+      const bal = res.data.new_balances;
       updateStats({
-        ...stats,
-        xpTotal:     bal.xpTotal,
+        ...getStats(),
+        xpTotal: bal.xpTotal,
         coinBalance: bal.coinBalance,
-        finLevels:   bal.unlockedLevels,
-        rankLevel:   res.data.newRank ?? stats.rankLevel,
-        PBs: r.isPB ? { ...stats.PBs, [String(r.levelNumber)]: r.wpm } : stats.PBs,
+        finLevels: bal.unlockedLevels,
+        PBs: bal.PBs
       });
-      Object.assign(gameState, {
-        xpTotal:     bal.xpTotal,
-        coinBalance: bal.coinBalance,
-        finLevels:   bal.unlockedLevels,
-      });
-      if (r.isPB) gameState.PBs[String(r.levelNumber)] = r.wpm;
-      if (res.data.newRank) gameState.rankLevel = res.data.newRank;
-
-    } catch {
-      saveLbl.setText("⚠ Error").setStyle({ color: COLORS.accent });
+    } catch (e) {
+      console.error("Save failed", e);
     }
-  }
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  _stat(x, y, value, color = COLORS.dark) {
-    // Just the number — labels (WPM, ACC%, etc.) are part of the hand-drawn background
-    this.add.text(x, y, value, {
-      fontFamily: "'Roboto Mono', monospace",
-      fontSize:   FONT.xl,
-      color,
-      fontStyle:  "bold",
-    }).setOrigin(0.5);
-  }
-
-  _imageBtn(x, y, key, callback) {
-    const btn = this.add.image(x, y, key)
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true });
-    btn.on("pointerover",  () => btn.setAlpha(0.8));
-    btn.on("pointerout",   () => btn.setAlpha(1));
-    btn.on("pointerdown",  callback);
   }
 }

@@ -78,6 +78,7 @@ def submit_level_score():
                 "coinBalance":     player.coinBalance,
                 "xpTotal":         player.xpTotal,
                 "unlockedLevels":  player.finLevels,
+                "PBs":             player.PBs
             }
         }), 200
  

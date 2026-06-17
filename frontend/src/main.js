@@ -26,6 +26,15 @@ const config = {
   },
 
   backgroundColor: "#ffffff",
+  
+  input: {
+    keyboard: {
+      capture: [
+        Phaser.Input.Keyboard.KeyCodes.BACKSPACE,
+        Phaser.Input.Keyboard.KeyCodes.SPACE // Capturing spacebar is great practice too so the page doesn't scroll down!
+      ]
+    }
+  },
 
   scene: [
     bootScene,        // preloads all assets before any scene runs
