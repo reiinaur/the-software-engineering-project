@@ -51,6 +51,31 @@ def get_level(level_number):
     if not passages:
         return jsonify({"message": "No passages available for this level."}), 500
  
+    if level_number == 2:
+        # data is stored as a dictionary of topics: { "topic1": { "word1": "def1", ... }, ... }
+        all_words = []
+        for topic, words_dict in data.items():
+            if isinstance(words_dict, dict):
+                for word, definition in words_dict.items():
+                    all_words.append((word, definition))
+
+        if not all_words:
+            return jsonify({"message": "No vocabulary words loaded yet. Please add entries via the Admin Panel."}), 500
+
+        # Shuffle and select up to 8 random words to compile into a typing drill string
+        random.shuffle(all_words)
+        selected_pairs = all_words[:8]
+        
+        # Build a cohesive string format: "Word: definition. Word2: definition2."
+        compiled_drill = " ".join([f"{word}: {definition}." for word, definition in selected_pairs])
+
+        return jsonify({
+            "passage":       compiled_drill,
+            "title":         "Vocabulary Drill",
+            "topic":         "Mixed Practice",
+            "timerDuration": config["timerDuration"],
+        }), 200
+    
     # pick one passage at random so the player gets variety on repeated attempts
     chosen = random.choice(passages)
  

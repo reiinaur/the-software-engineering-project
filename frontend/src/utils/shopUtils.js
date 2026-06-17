@@ -10,7 +10,7 @@ export const TAB_LABELS = {
 // maps frontend category keys to the exact Flask model column names used in equip requests
 export const EQUIP_FIELD = {
   accessories: "equippedAccessories", 
-  screenTheme: "equippedColours"      
+  screenTheme: "equippedScreenTheme"      
 };
 
 // full item catalogue
