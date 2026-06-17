@@ -118,23 +118,3 @@ class shopState(db.Model):
             raise ValueError(f"Equip rejected: '{value}' is not inside your owned screenTheme array.")
         return value
     
-# vocabData table
-class vocabData(db.Model):
-    __tablename__ = 'vocabData'
-    topicName = mapped_column(db.String(50), primary_key=True, unique=True, nullable=False)
-    words = mapped_column(db.JSON, default=lambda: [], nullable=False)
-    definitions = mapped_column(db.JSON, default=lambda: [], nullable=False)
-
-    @validates('words', 'definitions')
-    def check_arrays(self, key, array_val):
-        if not isinstance(array_val, list):
-            raise ValueError(f"Database write rejected: '{key}' must be a formal array format list.")
-        return array_val
-
-    def validate_vocab_lengths(self):
-        # words and definitions must be parallel arrays of equal length
-        if len(self.words) != len(self.definitions):
-            raise ValueError(
-                f"Sync failed: The words array length ({len(self.words)}) "
-                f"must perfectly match definitions array length ({len(self.definitions)})."
-            )
