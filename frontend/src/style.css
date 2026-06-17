@@ -1,14 +1,13 @@
 @import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap");
 
+/* universal reset so padding and borders don't affect element width calculations */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-/* Full-viewport container with no scrollbars.
-   Phaser's Scale Manager (FIT mode) centres and scales the canvas inside.
-   The black body background becomes the letterbox colour on non-16:9 screens. */
+/* locks the viewport to prevent any scroll */
 html, body {
   width: 100%;
   height: 100%;
@@ -29,51 +28,24 @@ html, body {
   display: block;
 }
 
-/* ── Form inputs inside Phaser DOM overlays ────────────────────────
-   Applies to every <input> created via this.add.dom().createFromHTML().
-   These inputs are inside Phaser's DOM container, which is CSS-scaled
-   to match the canvas, so sizes here are in screen pixels (not game units). */
-input[type="text"],
-input[type="email"],
-input[type="password"] {
+/* flex container that Phaser injects the canvas into */
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
   font-family: "Roboto Mono", monospace;
-  font-size: 16px;
-  color: #1a1a2e;
-  background: transparent;
-  border: none;
-  outline: none;
+}
+
+/* flex container that Phaser injects the canvas into */
+#game-container {
   width: 100%;
-  padding: 5px 3px;
-  caret-color: #e94560;
-  display: block;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-input::placeholder { color: #aaaaaa; }
-
-button { cursor: pointer; font-family: "Roboto Mono", monospace; }
-
-/* Range slider for settings scene */
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 4px;
-  background: #dddddd;
-  border-radius: 2px;
-  outline: none;
-  cursor: pointer;
-}
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  background: #1a1a2e;
-  border-radius: 50%;
-}
-input[type="range"]::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  background: #1a1a2e;
-  border-radius: 50%;
-  border: none;
+#game-container canvas {
+  display: block; /* removes the default inline gap that appears below canvas elements */
 }

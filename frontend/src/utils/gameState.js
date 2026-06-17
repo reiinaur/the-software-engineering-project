@@ -1,24 +1,30 @@
+// single shared object that holds all runtime state for the current session
+// scenes read from and write to this directly rather than passing data through scene params
+
 export const gameState = {
   // user data
   userId:      null,
   name:        null,
-  role:        null,      
+  role:        null, // 'player' or 'admin'      
 
-  // stats
+  // persistent player stats 
+  // synced with the server after each completed run
   rankLevel:   1,
   xpTotal:     0,
   coinBalance: 0,
-  finLevels:   [],
-  PBs:         {},       
+  finLevels:   [], // level numbers the player has completed at least once
+  PBs:         {}, // personal best wpm per level       
 
-  // current level state
+  // current level config 
+  // written by levelSelectScene before gameScene starts
   selectedLevel:  null,
   passage:        "",
   articleTitle:   "",
   articleTopic: "",
   timerDuration:  60,
 
-  // last game result
+  // result from the most recently completed run 
+  // read by resultsScene
   lastResult: {
     wpm:         0,
     accuracy:    0,
@@ -29,13 +35,14 @@ export const gameState = {
     levelNumber: null,
   },
 
-  // cosmetics
+  // cosmetics 
+  // synced from the server's shopState on login
   shopOwned: {
-    accessories: [],    
-    screenTheme: [],    
+    accessories: [], // owned accessory item ids     
+    screenTheme: [], // owned screen theme item ids   
   },
   shopEquipped: {
-    accessories: null,   
-    screenTheme: null,  
+    accessories: null, // currently equipped accessory id or null for none  
+    screenTheme: null, // currently equipped theme id, or null for default
   },
 };

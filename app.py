@@ -16,8 +16,18 @@ def create_app():
     app = Flask(__name__) # creates app instance
     # pulls secret key from the environment so it's never hardcoded in source
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///users.db"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+    # fetches railway's auto-generated variable 
+    # falls back to local SQLite if missing
+    uri = os.environ.get("DATABASE_URL", "sqlite:///users.db")
+
+    # converts postgres:// to postgresql:// for SQLAlchemy compatibility
+    if uri and uri.startswith("postgres://"):
+        uri = uri.replace("postgres://", "postgresql://", 1)
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = uri
+
     # allow all origins on /api/* routes; credentials (auth headers) are supported
     CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
