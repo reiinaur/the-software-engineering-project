@@ -1,24 +1,69 @@
 {
   "passages": [
     {
-      "title": "OOP — Encapsulation",
-      "topic": "OOP",
-      "text": "Encapsulation is the bundling of data and the methods that operate on that data within a single unit called a class. It restricts direct access to an object's internal state and prevents unintended interference or misuse of the data."
+      "title": "Identify",
+      "topic": "NESA key terms",
+      "text": "Identify means to recognise and name specific information or features within a question or context. It requires simply pointing out what is being asked without explanation."
     },
     {
-      "title": "OOP — Inheritance",
-      "topic": "OOP",
-      "text": "Inheritance allows a class to acquire the properties and methods of another class. The child class extends the parent class and can override inherited methods to provide specialised behaviour while reusing existing code."
+      "title": "Define",
+      "topic": "NESA key terms",
+      "text": "Define means to state the meaning of a term and include its essential characteristics. It requires a clear and precise explanation of what something is."
     },
     {
-      "title": "Algorithms",
-      "topic": "OOP",
-      "text": "An algorithm is a finite sequence of well-defined instructions that solves a computational problem. Algorithms are evaluated on their time complexity and space complexity to determine their efficiency at scale."
+      "title": "Describe",
+      "topic": "NESA key terms",
+      "text": "Describe means to provide characteristics and features of a concept in detail. It involves giving a clear picture of what something is like."
     },
     {
-      "title": "Data Structures",
-      "topic": "OOP",
-      "text": "A data structure is a way of organising and storing data so it can be accessed and modified efficiently. Common structures include arrays, linked lists, stacks, queues, trees, and hash tables."
+      "title": "Explain",
+      "topic": "NESA key terms",
+      "text": "Explain means to show cause and effect relationships and describe how or why something happens. It requires linking ideas together clearly."
+    },
+    {
+      "title": "Analyse",
+      "topic": "NESA key terms",
+      "text": "Analyse means to break information into parts and examine relationships between them. It involves identifying implications and connections."
+    },
+    {
+      "title": "Justify",
+      "topic": "NESA key terms",
+      "text": "Justify means to support an argument or conclusion with evidence or reasoning. It requires explaining why a decision or statement is valid."
+    },
+    {
+      "title": "Evaluate",
+      "topic": "NESA key terms",
+      "text": "Evaluate means to make a judgement based on criteria and determine the value or effectiveness of something. It often includes both strengths and weaknesses."
+    },
+    {
+      "title": "Define what is meant by a variable in programming.",
+      "topic": "NESA key terms",
+      "text": "A variable is a named storage location in a program that holds data which can be changed during execution. It allows programs to store, update, and retrieve values as needed while the program is running."
+    },
+    {
+      "title": "Describe the role of web browsers in a computer system.",
+      "topic": "NESA key terms",
+      "text": "Web browsers such as Google Chrome and Internet Explorer are applications that allow users to access and interact with content on the internet. They enable access to websites, online tools, and cloud-based services such as Office 365, email, and learning platforms, supporting both educational and general use."
+    },
+    {
+      "title": "Explain how web browsers support access to cloud applications.",
+      "topic": "NESA key terms",
+      "text": "Web browsers such as Chrome and Internet Explorer allow users to access cloud-based applications like Microsoft Office 365 through the internet. This enables users to run programs such as Word, Excel, and PowerPoint online without needing full desktop installation, allowing access from different devices and locations."
+    },
+    {
+      "title": "Analyse the relationship between web browsers and cloud-based software.",
+      "topic": "NESA key terms",
+      "text": "Web browsers act as a gateway between users and cloud-based software such as Office 365. They provide a graphical interface that allows users to access applications hosted on remote servers. This relationship enables lightweight local systems to run powerful applications remotely, improving accessibility and reducing dependency on device hardware, although performance may vary depending on internet connection."
+    },
+    {
+      "title": "Justify the use of cloud-based applications in education.",
+      "topic": "NESA key terms",
+      "text": "Cloud-based applications are justified in education because they allow students to access tools such as Word, Excel, and PowerPoint from any device with internet access. This ensures equal access to resources regardless of personal device capability and supports flexible learning both at school and at home."
+    },
+    {
+      "title": "Evaluate the effectiveness of using web-based software in schools.",
+      "topic": "NESA key terms",
+      "text": "Web-based software is effective in schools because it increases accessibility, reduces software installation requirements, and ensures students can access learning tools from multiple locations. However, it can also depend heavily on internet reliability and may limit exposure to alternative offline software, which could reduce broader technical skill development. Overall, its benefits in accessibility and consistency generally outweigh its limitations."
     }
   ]
 }

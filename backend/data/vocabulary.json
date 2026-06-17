@@ -1,14 +1,309 @@
 {
-  "passages": [
+  "vocabulary": [
     {
-      "title": "test #2",
+      "title": "Variable",
       "topic": "Programming fundamentals",
-      "text": "i think i screwed up"
+      "text": "A variable is a named storage location in memory used to hold data that can change during program execution. It allows programs to store, update, and retrieve values dynamically."
     },
     {
-      "title": "oop",
+      "title": "Data type",
+      "topic": "Programming fundamentals",
+      "text": "A data type defines the kind of value a variable can hold, such as integer, string, or boolean. It determines how the data is stored and what operations can be performed on it."
+    },
+    {
+      "title": "Constant",
+      "topic": "Programming fundamentals",
+      "text": "A constant is a value that cannot be changed once it is assigned. It is used to store fixed values like mathematical constants or configuration settings."
+    },
+    {
+      "title": "Operator",
+      "topic": "Programming fundamentals",
+      "text": "An operator is a symbol that performs an operation on one or more values, such as addition, subtraction, or comparison. It is used to manipulate data within expressions."
+    },
+    {
+      "title": "Expression",
+      "topic": "Programming fundamentals",
+      "text": "An expression is a combination of variables, values, and operators that evaluates to a result. It is used to perform calculations or logical evaluations in a program."
+    },
+    {
+      "title": "Control flow",
+      "topic": "Programming fundamentals",
+      "text": "Control flow refers to the order in which instructions are executed in a program. It determines how decisions, loops, and sequences are handled during execution."
+    },
+    {
+      "title": "Selection",
+      "topic": "Programming fundamentals",
+      "text": "Selection is a control structure that allows a program to choose between different paths based on conditions. It is commonly implemented using if/else statements."
+    },
+    {
+      "title": "Iteration",
+      "topic": "Programming fundamentals",
+      "text": "Iteration is the repetition of a set of instructions until a condition is met. It is implemented using loops such as for and while loops."
+    },
+    {
+      "title": "Algorithm",
+      "topic": "Programming fundamentals",
+      "text": "An algorithm is a step-by-step procedure for solving a problem or completing a task. It must be finite, precise, and effective."
+    },
+    {
+      "title": "Sequence",
+      "topic": "Programming fundamentals",
+      "text": "Sequence refers to the order in which instructions are executed in a program. Each instruction runs one after another unless control flow changes it."
+    },
+
+    {
+      "title": "Class",
       "topic": "Object-oriented programming",
-      "text": "oopsies!"
+      "text": "A class is a blueprint for creating objects in object-oriented programming. It defines attributes and methods that describe the behaviour and properties of objects."
+    },
+    {
+      "title": "Object",
+      "topic": "Object-oriented programming",
+      "text": "An object is an instance of a class that contains real values and behaviour. It represents a specific entity in a program."
+    },
+    {
+      "title": "Instance",
+      "topic": "Object-oriented programming",
+      "text": "An instance is a specific occurrence of a class created in memory. Each instance has its own set of attribute values."
+    },
+    {
+      "title": "Method",
+      "topic": "Object-oriented programming",
+      "text": "A method is a function defined inside a class that describes behaviours of objects. It operates on object data and defines actions."
+    },
+    {
+      "title": "Attribute",
+      "topic": "Object-oriented programming",
+      "text": "An attribute is a variable stored inside a class that describes the properties of an object. It holds the state of an object."
+    },
+    {
+      "title": "Encapsulation",
+      "topic": "Object-oriented programming",
+      "text": "Encapsulation is the bundling of data and methods within a class while restricting direct access to internal data. It improves security and modularity."
+    },
+    {
+      "title": "Inheritance",
+      "topic": "Object-oriented programming",
+      "text": "Inheritance allows one class to acquire properties and methods from another class. It supports code reuse and hierarchical relationships."
+    },
+    {
+      "title": "Polymorphism",
+      "topic": "Object-oriented programming",
+      "text": "Polymorphism allows methods to take many forms depending on the object that is calling them. It enables flexibility in code behaviour."
+    },
+    {
+      "title": "Abstraction",
+      "topic": "Object-oriented programming",
+      "text": "Abstraction hides complex implementation details and shows only essential features. It simplifies program design and usage."
+    },
+    {
+      "title": "Constructor",
+      "topic": "Object-oriented programming",
+      "text": "A constructor is a special method used to initialise objects when they are created. It sets initial values for attributes."
+    },
+
+    {
+      "title": "Sensor",
+      "topic": "Programming mechatronics",
+      "text": "A sensor is a device that detects changes in the environment such as temperature, light, or motion. It converts physical data into electrical signals."
+    },
+    {
+      "title": "Actuator",
+      "topic": "Programming mechatronics",
+      "text": "An actuator is a component that converts electrical signals into physical movement or action. It is commonly used in robotics systems."
+    },
+    {
+      "title": "Microcontroller",
+      "topic": "Programming mechatronics",
+      "text": "A microcontroller is a small computer on a single chip used to control electronic devices. It processes inputs and controls outputs."
+    },
+    {
+      "title": "Embedded system",
+      "topic": "Programming mechatronics",
+      "text": "An embedded system is a computer system designed to perform a specific function within a larger device. It often operates in real-time."
+    },
+    {
+      "title": "Signal processing",
+      "topic": "Programming mechatronics",
+      "text": "Signal processing involves analysing and modifying signals from sensors. It is used to interpret real-world data in digital systems."
+    },
+    {
+      "title": "Feedback loop",
+      "topic": "Programming mechatronics",
+      "text": "A feedback loop is a system where outputs are fed back as inputs to control behaviour. It helps maintain stability and accuracy."
+    },
+    {
+      "title": "PWM",
+      "topic": "Programming mechatronics",
+      "text": "Pulse Width Modulation (PWM) is a technique used to control power delivery by varying signal width. It is commonly used in motor control."
+    },
+    {
+      "title": "GPIO",
+      "topic": "Programming mechatronics",
+      "text": "General Purpose Input/Output (GPIO) pins allow microcontrollers to interface with external devices. They can be configured as input or output."
+    },
+    {
+      "title": "Robotics control system",
+      "topic": "Programming mechatronics",
+      "text": "A robotics control system manages the movement and behaviour of a robot. It processes sensor data and sends commands to actuators."
+    },
+    {
+      "title": "Real-time system",
+      "topic": "Programming mechatronics",
+      "text": "A real-time system processes data and responds within strict time constraints. It is critical in systems like robotics and automation."
+    },
+
+    {
+      "title": "Authentication",
+      "topic": "Secure software architecture",
+      "text": "Authentication is the process of verifying the identity of a user or system. It ensures only authorised users can access resources."
+    },
+    {
+      "title": "Authorisation",
+      "topic": "Secure software architecture",
+      "text": "Authorisation determines what an authenticated user is allowed to do. It controls access to system resources and actions."
+    },
+    {
+      "title": "Encryption",
+      "topic": "Secure software architecture",
+      "text": "Encryption is the process of converting data into a coded format to prevent unauthorised access. It protects data during storage and transmission."
+    },
+    {
+      "title": "Hashing",
+      "topic": "Secure software architecture",
+      "text": "Hashing converts data into a fixed-length value that cannot be easily reversed. It is commonly used for password storage."
+    },
+    {
+      "title": "Firewall",
+      "topic": "Secure software architecture",
+      "text": "A firewall is a security system that monitors and controls incoming and outgoing network traffic. It helps block unauthorised access."
+    },
+    {
+      "title": "Input validation",
+      "topic": "Secure software architecture",
+      "text": "Input validation ensures that data entered into a system is correct and safe. It helps prevent security vulnerabilities like injection attacks."
+    },
+    {
+      "title": "Threat modelling",
+      "topic": "Secure software architecture",
+      "text": "Threat modelling is the process of identifying potential security threats in a system. It helps design safer software architectures."
+    },
+    {
+      "title": "Least privilege principle",
+      "topic": "Secure software architecture",
+      "text": "The least privilege principle ensures users only have the minimum access required to perform their tasks. It reduces security risks."
+    },
+    {
+      "title": "Vulnerability",
+      "topic": "Secure software architecture",
+      "text": "A vulnerability is a weakness in a system that can be exploited by attackers. It may lead to security breaches or data loss."
+    },
+    {
+      "title": "Secure protocol",
+      "topic": "Secure software architecture",
+      "text": "A secure protocol is a set of rules for safe data communication over networks. It ensures confidentiality and integrity of data."
+    },
+
+    {
+      "title": "HTML",
+      "topic": "Programming for the web",
+      "text": "HTML is a markup language used to structure content on the web. It defines elements such as headings, paragraphs, and links."
+    },
+    {
+      "title": "CSS",
+      "topic": "Programming for the web",
+      "text": "CSS is used to style and format web pages. It controls layout, colours, fonts, and overall visual presentation."
+    },
+    {
+      "title": "JavaScript",
+      "topic": "Programming for the web",
+      "text": "JavaScript is a programming language used to add interactivity to web pages. It enables dynamic content and user interaction."
+    },
+    {
+      "title": "Front-end",
+      "topic": "Programming for the web",
+      "text": "Front-end refers to the part of a website that users interact with directly. It includes layout, design, and interface elements."
+    },
+    {
+      "title": "Back-end",
+      "topic": "Programming for the web",
+      "text": "Back-end refers to the server-side of a web application. It handles data processing, storage, and application logic."
+    },
+    {
+      "title": "API",
+      "topic": "Programming for the web",
+      "text": "An API is a set of rules that allows different software systems to communicate. It enables data exchange between applications."
+    },
+    {
+      "title": "HTTP/HTTPS",
+      "topic": "Programming for the web",
+      "text": "HTTP and HTTPS are protocols used for transferring data over the web. HTTPS provides secure encrypted communication."
+    },
+    {
+      "title": "DOM",
+      "topic": "Programming for the web",
+      "text": "The Document Object Model represents a web page as a structured tree. It allows scripts to dynamically access and modify content."
+    },
+    {
+      "title": "Responsive design",
+      "topic": "Programming for the web",
+      "text": "Responsive design ensures websites adapt to different screen sizes and devices. It improves usability across platforms."
+    },
+    {
+      "title": "Web server",
+      "topic": "Programming for the web",
+      "text": "A web server stores and delivers web content to users over the internet. It processes requests from browsers and sends responses."
+    },
+
+    {
+      "title": "Script",
+      "topic": "Software automation",
+      "text": "A script is a set of instructions written to automate tasks. It is often used to perform repetitive operations efficiently."
+    },
+    {
+      "title": "Workflow",
+      "topic": "Software automation",
+      "text": "A workflow is a sequence of automated or manual steps in a process. It helps organise and streamline tasks."
+    },
+    {
+      "title": "Automation",
+      "topic": "Software automation",
+      "text": "Automation is the use of technology to perform tasks with minimal human intervention. It increases efficiency and reduces errors."
+    },
+    {
+      "title": "Scheduler",
+      "topic": "Software automation",
+      "text": "A scheduler is a system that runs tasks at specified times or intervals. It is commonly used in operating systems and servers."
+    },
+    {
+      "title": "CI/CD",
+      "topic": "Software automation",
+      "text": "CI/CD stands for Continuous Integration and Continuous Deployment. It automates software testing and deployment processes."
+    },
+    {
+      "title": "Testing framework",
+      "topic": "Software automation",
+      "text": "A testing framework is a set of tools used to automate software testing. It helps ensure code quality and reliability."
+    },
+    {
+      "title": "Deployment pipeline",
+      "topic": "Software automation",
+      "text": "A deployment pipeline automates the process of delivering software from development to production. It ensures consistent releases."
+    },
+    {
+      "title": "Task runner",
+      "topic": "Software automation",
+      "text": "A task runner automates repetitive development tasks such as minification or compilation. It improves workflow efficiency."
+    },
+    {
+      "title": "Batch processing",
+      "topic": "Software automation",
+      "text": "Batch processing executes a group of tasks without manual intervention. It is useful for handling large data sets efficiently."
+    },
+    {
+      "title": "Bot",
+      "topic": "Software automation",
+      "text": "A bot is an automated program that performs tasks over the internet or within software systems. It can simulate human actions."
     }
   ]
 }

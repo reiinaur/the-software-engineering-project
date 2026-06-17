@@ -248,19 +248,25 @@ export default class resultsScene extends Phaser.Scene {
       const bal = res.data.new_balances;
       
       // keep both coin fields in sync since different scenes read different keys
-      gameState.coins = bal.coinBalance;
+      gameState.rankLevel   = res.data.newRank;
+      gameState.xpTotal     = bal.xpTotal;
       gameState.coinBalance = bal.coinBalance;
+      gameState.coins       = bal.coinBalance;
+      gameState.finLevels   = bal.unlockedLevels;
+      gameState.PBs         = bal.PBs;
+
       
       // persist updated balances to localStorage so they survive page reloads
       updateStats({
         ...getStats(),
+        rankLevel: res.data.newRank,
         xpTotal: bal.xpTotal,
         coinBalance: bal.coinBalance,
         finLevels: bal.unlockedLevels,
         PBs: bal.PBs
       });
-    } catch (e) {
-      console.error("Save failed", e);
+    } catch (err) {
+      console.error("Error saving score:", err);
     }
   }
 }
