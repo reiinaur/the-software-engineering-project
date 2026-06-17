@@ -1,7 +1,7 @@
 import uuid
 from flask import Blueprint, request, jsonify, g
-from models import db, playerStats, scoreHistory
-from routes.auth import token_required
+from api.backend.models import db, playerStats, scoreHistory
+from api.backend.routes.auth import token_required
  
 statsBP = Blueprint('stats', __name__)
  
