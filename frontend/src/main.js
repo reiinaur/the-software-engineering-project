@@ -7,6 +7,7 @@ import gameScene        from "./scenes/gameScene.js";
 import resultsScene     from "./scenes/resultsScene.js";
 import shopScene        from "./scenes/shopScene.js";
 import adminScene       from "./scenes/adminScene.js";
+import tutorialScene from "./scenes/tutorialScene.js";
 
 const config = {
   type: Phaser.AUTO, 
@@ -41,6 +42,7 @@ const config = {
     menuScene,
     loginScene,
     levelSelectScene,
+    tutorialScene,
     gameScene,
     resultsScene,
     shopScene,

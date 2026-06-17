@@ -54,5 +54,6 @@ def get_level(level_number):
     return jsonify({
         "passage":       chosen["text"],
         "title":         chosen["title"],
+        "topic":         chosen["topic"],
         "timerDuration": config["timerDuration"],
     }), 200

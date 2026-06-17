@@ -57,7 +57,7 @@ export default class loginScene extends Phaser.Scene {
     // Define positions dynamically based on screen state profiles
     const yOffsets = this._isSignUp 
       ? [-110, -40, 29, 98, 164] 
-      : [-5, 110];               
+      : [-5, 110];              
 
     // Build fields dynamically
     this._fieldsOrder.forEach((fieldName, index) => {
@@ -74,7 +74,10 @@ export default class loginScene extends Phaser.Scene {
         .setOrigin(0, 0.5)
         .setInteractive({ useHandCursor: true });
       
-      zone.on("pointerdown", () => this._switchField(fieldName));
+      zone.on("pointerdown", () => {
+        this.sound.play("click", { volume: 0.2 }); 
+        this._switchField(fieldName);
+      });
       this._hitZones.push(zone);
     });
 
@@ -85,9 +88,9 @@ export default class loginScene extends Phaser.Scene {
       fontFamily: "custom-font", 
       fontSize: "15px", 
       color: "#929292",
-      wordWrap: { width: 320, useAdvancedWrap: true } // Wraps perfectly across the line width
+      wordWrap: { width: 320, useAdvancedWrap: true } 
     })
-    .setOrigin(0, 0) // Shifted to left-top alignment to prevent text overlap jumps
+    .setOrigin(0, 0) 
     .setDepth(5);
 
     // 5. Blinking Cursor Loop Engine
@@ -123,10 +126,14 @@ export default class loginScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     btnSubmit.on("pointerdown", () => {
+      this.sound.play("click", { volume: 0.2 }); 
       if (this._isSignUp) this._handleSignUp(); else this._handleLogin();
     });
 
-    btnBack.on("pointerdown", () => this.scene.start("menuScene"));
+    btnBack.on("pointerdown", () => {
+      this.sound.play("click", { volume: 0.2 });
+      this.scene.start("menuScene");
+    });
 
     // Button animations
     btnSubmit.on("pointerover", () => btnSubmit.setScale(1.1));
@@ -155,6 +162,7 @@ export default class loginScene extends Phaser.Scene {
       this._switchField(this._fieldsOrder[nextIndex]);
       return;
     } else if (event.key === "Enter") {
+      this.sound.play("click", { volume: 0.2 }); 
       if (this._isSignUp) this._handleSignUp(); else this._handleLogin();
       return;
     } else if (event.key.length === 1) {
@@ -205,6 +213,26 @@ export default class loginScene extends Phaser.Scene {
     try {
       const res = await axios.post("/api/auth/login", { username: userName, password: passInput });
       this._onAuthSuccess(res.data);
+      if (res.data.status === "success") {
+        const user = {
+          userId: res.data.userId,
+          name: res.data.name,
+          role: res.data.role
+        };
+
+        saveSession(res.data.token, user, res.data.playerStats, res.data.shopState);
+
+        // Sync to local variable tracking state immediately
+        gameState.coins = res.data.playerStats.coinBalance;
+        gameState.coinBalance = res.data.playerStats.coinBalance;
+        gameState.shopOwned = res.data.shopState.owned;
+        gameState.shopEquipped = res.data.shopState.equipped;
+        gameState.ownedItems = [
+          ...(res.data.shopState.owned.accessories || []),
+          ...(res.data.shopState.owned.screenTheme || [])
+        ];
+        this.scene.start("menuScene");
+      }
     } catch (err) {
       this.errorText.setText(err.response?.data?.message || "Login failed.");
     }

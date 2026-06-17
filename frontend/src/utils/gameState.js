@@ -2,19 +2,20 @@ export const gameState = {
   // user data
   userId:      null,
   name:        null,
-  role:        null,      // "player" | "admin"
+  role:        null,      
 
   // stats
   rankLevel:   1,
   xpTotal:     0,
   coinBalance: 0,
   finLevels:   [],
-  PBs:         {},        // { "1": 72, "2": 65, ... }
+  PBs:         {},       
 
   // current level state
   selectedLevel:  null,
   passage:        "",
   articleTitle:   "",
+  articleTopic: "",
   timerDuration:  60,
 
   // last game result
@@ -30,13 +31,11 @@ export const gameState = {
 
   // cosmetics
   shopOwned: {
-    accessories: [],   
-    decor:       [],   
+    accessories: [],    
     screenTheme: [],    
   },
   shopEquipped: {
-    accessories: null,  
-    decor:       null,  
+    accessories: null,   
     screenTheme: null,  
   },
 };

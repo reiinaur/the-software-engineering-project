@@ -131,6 +131,7 @@ def logIn():
  
     # Also return playerStats so the frontend doesn't need a separate request
     stats = playerStats.query.filter_by(userId=user.userId).first()
+    inventory = shopState.query.filter_by(userId=user.userId).first()
  
     return jsonify({
         'token': token,
@@ -144,5 +145,15 @@ def logIn():
             'coinBalance': stats.coinBalance,
             'finLevels':   stats.finLevels,
             'PBs':         stats.PBs,
-        }
+        },
+        'shopState': { 
+            'owned': {
+                'accessories': inventory.accessories if inventory else [],
+                'screenTheme': inventory.screenTheme if inventory else []
+            },
+            'equipped': {
+                'accessories': inventory.equippedAccessories if inventory else None,
+                'screenTheme': inventory.equippedScreenTheme if inventory else None
+            }
+        },
     }), 200

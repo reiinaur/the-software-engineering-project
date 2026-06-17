@@ -1,28 +1,88 @@
 import { gameState } from "./gameState.js";
 import { MOODS, ACCESSORY_IDS } from "./scale.js";
 
-export const CATALOGUE = {
-  accessories: [
-    { id: "sillyHat",     assetKey: "silly-hat",     label: "Silly Hat",     cost: 80,  desc: "For the sillier times.."   },
-    { id: "detectiveCap", assetKey: "detective-cap", label: "Detective Cap", cost: 120, desc: "Increases WPM by feel."      },
-    { id: "googlyEyes",   assetKey: "googly-eyes",   label: "Googly Eyes",   cost: 60,  desc: "Hard to type. Worth it."    },
-  ],
-  screenTheme: [
-    { id: "default",     assetKey: "item-theme-default", label: "Default",     cost: 0,   desc: "Classic look."             },
-    { id: "matcha",      assetKey: "item-theme-matcha",  label: "Matcha",      cost: 100, desc: "Calm green tones."         },
-    { id: "dark",        assetKey: "item-theme-dark",    label: "Dusty Dark",  cost: 100, desc: "Night shift edition."      },
-  ],
-};
-
+// --- SHOP LABELS CONFIGURATION ---
 export const TAB_LABELS = {
   accessories: "ACCESSORIES",
-  screenTheme: "THEMES",
+  screenTheme: "THEMES"
 };
 
-// Maps catalogue category → backend equip field name
+// --- BACKEND FIELD MAPPINGS ---
+// Updated to match your exact Flask model arrays/columns!
 export const EQUIP_FIELD = {
-  accessories: "equippedAccessories",
-  screenTheme: "equippedScreenTheme",
+  accessories: "equippedAccessories", 
+  screenTheme: "equippedColours"      
+};
+
+// --- ITEMS CATALOGUE ---
+export const CATALOGUE = {
+  accessories: [
+    {
+      id: "none",
+      label: "No Accessory",
+      cost: 0,
+      desc: "Remove all accessories from your pigeon.",
+      assetKey: "none-placeholder"
+    },
+    {
+      id: "silly-hat",
+      label: "Silly Hat",
+      cost: 30,
+      desc: "A silly hat to brighten your pigeon's work day.",
+      assetKey: "silly-hat-placeholder"
+    },
+    {
+      id: "crown",
+      label: "Royal Crown",
+      cost: 75,
+      desc: "Treat your bird like the true royalty they are.",
+      assetKey: "crown-placeholder"
+    },
+    {
+      id: "top-hat",
+      label: "Top Hat",
+      cost: 50,
+      desc: "An elegant, classy hat for an equally elegant bird.",
+      assetKey: "top-hat-placeholder"
+    }
+  ],
+  screenTheme: [
+    {
+      id: "default",
+      label: "Parchment",
+      cost: 0,
+      desc: "The standard warm, comfortable background.",
+      assetKey: "default-placeholder"
+    },
+    {
+      id: "vanilla",
+      label: "Vanilla",
+      cost: 40,
+      desc: "A vanilla white typing space for those who like light mode.",
+      assetKey: "vanilla-placeholder"
+    },
+    {
+      id: "lavendar",
+      label: "Lavendar",
+      cost: 25,
+      desc: "A soft pastel purple typing environment.",
+      assetKey: "lavendar-placeholder"
+    },
+    {
+      id: "cottoncandy",
+      label: "Cotton Candy",
+      cost: 35,
+      desc: "A cute pink color.",
+      assetKey: "cotton-candy-placeholder"
+    },
+    {
+      id: "forest",
+      label: "Forest Green",
+      cost: 60,
+      desc: "If you want to immerse in nature... I guess?",
+      assetKey: "forest-placeholder"
+    }
+  ]
 };
 
 // ── Theme configs ─────────────────────────────────────────────────────────────

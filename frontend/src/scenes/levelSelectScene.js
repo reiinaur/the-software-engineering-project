@@ -66,7 +66,10 @@ export default class levelSelectScene extends Phaser.Scene {
 
     btnBack.on("pointerover", () => btnBack.setScale(0.11));
     btnBack.on("pointerout", () => btnBack.setScale(0.09));
-    btnBack.on("pointerdown",  () => this.scene.start("menuScene"));
+    btnBack.on("pointerdown", () => {
+      this.sound.play("click", { volume: 0.2 }); 
+      this.scene.start("menuScene");
+    });
   }
 
   _placeCard(levelNum, pos) {
@@ -163,8 +166,6 @@ export default class levelSelectScene extends Phaser.Scene {
     container.on("pointerover", () => {
       this.tweens.killTweensOf(container);
       
-      // REMOVED: container.setDepth(20) has been removed so depths stay locked!
-      
       this.tweens.add({
         targets:  container,
         scaleX:   CARD_HOVER_SCALE,
@@ -188,10 +189,19 @@ export default class levelSelectScene extends Phaser.Scene {
     });
 
     // ── Click: trigger level loading ─────────────────────────
-    container.on("pointerdown", () => this._loadLevel(levelNum));
+    container.on("pointerdown", () => {
+      this.sound.play("click", { volume: 0.2 }); 
+      this._loadLevel(levelNum);
+    });
   }
 
   async _loadLevel(levelNum) {
+    // Level 1 always goes to tutorial
+    if (levelNum === 1) {
+      this.scene.start("tutorialScene");
+      return;
+    }
+
     this._status.setText("Loading assignment...");
     this.input.enabled = false;
 
@@ -201,6 +211,7 @@ export default class levelSelectScene extends Phaser.Scene {
         selectedLevel: levelNum,
         passage:       res.data.passage,
         articleTitle:  res.data.title,
+        articleTopic:  res.data.topic,
         timerDuration: res.data.timerDuration,
       });
       this.scene.start("gameScene");

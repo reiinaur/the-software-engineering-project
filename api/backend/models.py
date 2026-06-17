@@ -16,9 +16,9 @@ class User(db.Model):
     name = mapped_column(String(50), nullable=False)
     userEmail = mapped_column(String, unique=True, nullable=False)
     userName = mapped_column(String, unique=True, nullable=False)
-    userPass = mapped_column(String, nullable=False) # stores the secure bcrypt hash string
-    role = mapped_column(String, nullable=False, default="player") # constraints: 'player' or 'admin'
-    authToken = mapped_column(String, unique=True, nullable=True, default=None) # nullable until login
+    userPass = mapped_column(String, nullable=False) 
+    role = mapped_column(String, nullable=False, default="player") 
+    authToken = mapped_column(String, unique=True, nullable=True, default=None) 
     createdAt = mapped_column(DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     @validates('userEmail')
@@ -38,7 +38,7 @@ class User(db.Model):
 class playerStats(db.Model):
     __tablename__ = 'playerStats'
     userId = mapped_column(String, ForeignKey('users.userId', ondelete='CASCADE'), primary_key=True, nullable=False)
-    rankLevel = mapped_column(Integer, default=1, nullable=False) # expected range constraints: 1 to 5 inclusive
+    rankLevel = mapped_column(Integer, default=1, nullable=False) 
     xpTotal = mapped_column(Integer, default=0, nullable=False)
     coinBalance = mapped_column(Integer, default=0, nullable=False)
     finLevels = mapped_column(JSON, default=lambda: [], nullable=False)
@@ -100,35 +100,19 @@ class shopState(db.Model):
     itemId = mapped_column(String, nullable=True) 
     itemCost = mapped_column(Integer, nullable=True, default=0) 
     accessories = mapped_column(JSON, default=lambda: [], nullable=False)
-    colours = mapped_column(JSON, default=lambda: [], nullable=False)
-    decor = mapped_column(JSON, default=lambda: [], nullable=False)
     screenTheme = mapped_column(JSON, default=lambda: [], nullable=False)
     equippedAccessories = mapped_column(String, nullable=True, default=None)
-    equippedColours = mapped_column(String, nullable=True, default=None)
-    equippedDecor = mapped_column(String, nullable=True, default=None)
     equippedScreenTheme = mapped_column(String, nullable=True, default=None)
 
     @validates('equippedAccessories')
     def validate_accessory(self, key, value):
-        if value is not None and value not in self.accessories:
+        if value is not None and value != "none" and value not in self.accessories:
             raise ValueError(f"Equip rejected: '{value}' is not inside your owned accessories array.")
         return value
 
-    @validates('equippedColours')
-    def validate_colour(self, key, value):
-        if value is not None and value not in self.colours:
-            raise ValueError(f"Equip rejected: '{value}' is not inside your owned colours array.")
-        return value
-    
-    @validates('equippedDecor')
-    def validate_decor(self, key, value):
-        if value is not None and value not in self.decor:
-            raise ValueError(f"Equip rejected: '{value}' is not inside your owned decor array.")
-        return value
-
     @validates('equippedScreenTheme')
-    def validate_theme(self, key, value):
-        if value is not None and value not in self.screenTheme:
+    def validate_screen_theme(self, key, value):
+        if value is not None and value != "default" and value not in self.screenTheme:
             raise ValueError(f"Equip rejected: '{value}' is not inside your owned screenTheme array.")
         return value
     
@@ -145,7 +129,6 @@ class vocabData(db.Model):
             raise ValueError(f"Database write rejected: '{key}' must be a formal array format list.")
         return array_val
 
-    # Custom model utility method (to be called inside the route right before saving data)
     def validate_vocab_lengths(self):
         if len(self.words) != len(self.definitions):
             raise ValueError(

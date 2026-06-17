@@ -4,30 +4,34 @@ import { CX, CY, GW, GH, colours, HEX, px, py } from "../utils/scale.js";
 import { authHeader, getStats, updateStats } from "../utils/auth.js";
 import { gameState } from "../utils/gameState.js";
 
+// --- SHOP CONFIG HEX COLOR ROUTER ---
+const THEMES = {
+  default: '#e6ba88',
+  cyberpunk: '#2b213a',
+  mint: '#a8e6cf',
+  sunset: '#ff8c94',
+  matrix: '#0d0d0d'
+};
+
 // Success/Newspaper Screen Layout
 const C = {
-  // Newspaper Text Area (Left)
-  PAPER_X: px(7),           // Start of text
-  PAPER_W: px(43),          // Slightly narrowed width wrapping to adjust for rightward shifts
-  
-  MASTHEAD_Y: py(12),       // "The Typing Times"
-  INFO_BAR_X: px(12),       // Shifted to line up with the card border
-  INFO_BAR_Y: py(39),       // By [user] | Title | Date
-  HEADLINE_X: px(12),       // Shifted to the right a bit
-  HEADLINE_Y: py(50),       // Bold Title
-  BODY_X: px(12),           // Shifted to the right a bit
-  BODY_Y: py(58),           // Start of passage text
+  PAPER_X: px(7),           
+  PAPER_W: px(43),          
 
-  TEXT_ANGLE: -0.8,
+  INFO_BAR_Y: py(40),       
+  HEADLINE_X: px(13),       
+  HEADLINE_Y: py(50),       
+  BODY_X: px(13),           
+  BODY_Y: py(57),           
 
   // Stats Sidebar (Right)
-  SIDEBAR_X: px(81),        // Center of the sidebar
-  HEADER_Y: py(25),         // "Article Complete!"
+  SIDEBAR_X: px(77),        
+  HEADER_Y: py(25),         
   
-  STAT_START_Y: py(48),     // Base stat Y when PB is present
-  STAT_SPACING: py(6),      // Gap between rows
+  STAT_START_Y: py(46),     
+  STAT_SPACING: py(6),      
   
-  BTN_Y: py(75),            // Button row
+  BTN_Y: py(75),            
 };
 
 // Failed Screen Layout
@@ -35,14 +39,14 @@ const F = {
   HEADER_Y: py(25),
   PIGEON_X: CX,
   PIGEON_Y: CY,
-  STAT_Y: py(71),           // Shifted up for button breathing room
-  BTN_Y: py(86),            // Explicit button Y row placement
+  STAT_Y: py(71),           
+  BTN_Y: py(82),            
 };
 
 // Font Constants
 const FONT_FAMILY = '"Courier Prime", "Courier New", monospace';
-const HEADLINE_FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif'; // Clean, ultra-bold headline choice
-const THEME_COLOR = "#7767a9"; // Unified newspaper header color
+const HEADLINE_FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif'; 
+const THEME_COLOR = "#7767a9"; 
 
 export default class resultsScene extends Phaser.Scene {
   constructor() { super("resultsScene"); }
@@ -79,51 +83,76 @@ export default class resultsScene extends Phaser.Scene {
         });
       }
     });
+
+    // Generate active failure overlay animations if user is wearing accessories
+    const activeAcc = gameState.equipped?.accessory || "none";
+    if (activeAcc !== "none") {
+      const phases = ["calm", "warning", "deadline", "failure"];
+      phases.forEach(phase => {
+        const accKey = `anim-acc-${activeAcc}-${phase}`;
+        const assetKey = `${activeAcc}-${phase}`;
+
+        if (!this.anims.exists(accKey) && this.textures.exists(assetKey)) {
+          this.anims.create({
+            key: accKey,
+            frames: this.anims.generateFrameNumbers(assetKey, { start: 0, end: 1 }),
+            frameRate: 2,
+            repeat: -1
+          });
+        }
+      });
+    }
   }
 
   // --- SUCCESS / NEWSPAPER SCREEN ---
   _buildCompleteScreen(r) {
-    this.cameras.main.setBackgroundColor('#e6ba88');
-    this.add.image(CX, CY, "newspaper"); 
+    this.sound.play("success", { volume: 0.5 });
+    
+    // Dynamic background matching your typing scene
+    const equippedTheme = gameState.equipped?.theme || "default";
+    this.cameras.main.setBackgroundColor(THEMES[equippedTheme] || THEMES.default);
+    
+    this.add.image(CX, CY, "newspaper").setAngle(0.9); 
 
-    // updates local game state PBs so level select displays it immediately
     if (r.isPB) {
       if (!gameState.PBs) gameState.PBs = {};
       gameState.PBs[String(r.levelNumber)] = r.wpm;
     }
 
-    // Info Bar (By [User] | [Title] | [Time]) with tabbed formatting to space across the entire section
-    const infoText = `By ${gameState.name || "User"}\t\t\t|\t\t\t${gameState.articleTitle || "Session"}\t\t\t|\t\t\t${r.wpm} WPM`;
-    this.add.text(C.INFO_BAR_X, C.INFO_BAR_Y, infoText, {
-      fontFamily: FONT_FAMILY, fontSize: "30px", color: THEME_COLOR, fontStyle: "bold"
-    })
-    .setAngle(C.TEXT_ANGLE);
+    const leftEdge  = px(11.5);
+    const rightEdge = px(57.5); 
+    const centerPoint = rightEdge - px(18);
 
-    // ── FIXED HEADLINE: Switched to thick Helvetica with fake bold stroke fail-safe ──
-    this.add.text(C.HEADLINE_X, C.HEADLINE_Y, gameState.articleTitle || "Article Complete", {
+    this.add.text(leftEdge, C.INFO_BAR_Y - 1, `By ${gameState.name || "User"}`, {
+      fontFamily: FONT_FAMILY, fontSize: "24px", color: THEME_COLOR, fontStyle: "bold"
+    }).setOrigin(0, 0.5);
+
+    this.add.text(centerPoint, C.INFO_BAR_Y, `| ${r.topic || "Session"} |`, {
+      fontFamily: FONT_FAMILY, fontSize: "24px", color: THEME_COLOR, fontStyle: "bold"
+    }).setOrigin(0.5, 0.5);
+
+    this.add.text(rightEdge, C.INFO_BAR_Y + 1, `${r.wpm} WPM`, {
+      fontFamily: FONT_FAMILY, fontSize: "24px", color: THEME_COLOR, fontStyle: "bold"
+    }).setOrigin(1, 0.5);
+
+    this.add.text(C.HEADLINE_X, C.HEADLINE_Y, r.title || "Article Complete", {
       fontFamily: HEADLINE_FONT, 
       fontSize: "42px", 
       color: THEME_COLOR, 
       fontStyle: "bold",
       stroke: THEME_COLOR,
-      strokeThickness: 1.5 // Outlines itself to guarantee a heavy, thick appearance
-    })
-    .setAngle(C.TEXT_ANGLE);
+      strokeThickness: 1.5 
+    });
 
     this.add.text(C.BODY_X, C.BODY_Y, gameState.passage, {
       fontFamily: FONT_FAMILY, fontSize: "30px", color: THEME_COLOR, fontStyle: "bold",
       wordWrap: { width: C.PAPER_W },
       lineSpacing: 4
-    })
-    .setAngle(C.TEXT_ANGLE);
+    });
 
-    // 2. Stats Side (Right)
-    this.add.sprite(C.SIDEBAR_X, C.HEADER_Y, "article-complete").play("anim-header-success").setScale(0.4);
+    this.add.sprite(C.SIDEBAR_X+30, C.HEADER_Y, "article-complete").play("anim-header-success").setScale(0.35);
 
-    // Conditional layout adjusting logic: If no new PB occurs, shift the vertical list coordinates up
     let dynamicStatStartY = C.STAT_START_Y;
-    
-    // ── SHIFT LOGIC ADJUSTMENTS ──
     let statsX = C.SIDEBAR_X - 70;
     let valuesX = C.SIDEBAR_X + 85;
 
@@ -132,13 +161,7 @@ export default class resultsScene extends Phaser.Scene {
             fontFamily: "custom-font", fontSize: "20px", color: "#9d8ecb", fontStyle: "bold"
         }).setOrigin(0.5);
     } else {
-        // Shifting stats row slightly higher since the PB banner is omitted
-        dynamicStatStartY -= py(6);
-        
-        // Apply your custom alignment corrections (+3px right, +2px down) when there is NO PB
-        statsX += 3;
-        valuesX += 3;
-        dynamicStatStartY += 2;
+        dynamicStatStartY -= py(3);
     }
     
     this._statRow(statsX, valuesX, dynamicStatStartY, "WPM", String(r.wpm));
@@ -148,23 +171,28 @@ export default class resultsScene extends Phaser.Scene {
     const totalScore = Math.round(r.wpm * (r.accuracy / 100) * 100);
     this._statRow(statsX, valuesX, dynamicStatStartY + C.STAT_SPACING * 3, "SCORE", String(totalScore));
 
-    // Hand-drawn buttons (Scaled down to 0.3)
-    this._imageBtn(C.SIDEBAR_X - 70, C.BTN_Y, "btn-try-again", () => this.scene.start("gameScene")).setScale(0.3);
-    this._imageBtn(C.SIDEBAR_X + 70, C.BTN_Y, "btn-go-home", () => this.scene.start("menuScene")).setScale(0.3);
+    this._imageBtn(C.SIDEBAR_X - 80, C.BTN_Y, "btn-try-again", () => this.scene.start("gameScene")).setScale(0.3);
+    this._imageBtn(C.SIDEBAR_X + 80, C.BTN_Y, "btn-go-home", () => this.scene.start("menuScene")).setScale(0.3);
   }
 
-  // failed screen
+  // --- FAILED SCREEN ---
   _buildFailedScreen(r) {
+    this.sound.play("failed-sound", { volume: 0.5 });
     this.add.image(CX, CY, "failed-bg");
     
-    // Header setup as an animated sprite at 2 FPS
     this.add.sprite(CX, F.HEADER_Y, "mission-failed").play("anim-header-failed").setScale(0.4);
 
-    // Sad Pigeon Animation
+    // Render Base Pigeon
     this.pigeon = this.add.sprite(F.PIGEON_X, F.PIGEON_Y + 10, "pigeon-failed").setScale(0.25);
     this.pigeon.play("anim-pigeon-failed");
 
-    // Horizontal Stat Row (Shifted up to F.STAT_Y for clean layout layout clearance)
+    // ── ATTACH DYNAMIC ACCESSORY IN FAILURE MODE ──
+    const activeAcc = gameState.equipped?.accessory || "none";
+    if (activeAcc !== "none" && this.textures.exists(`${activeAcc}-failure`)) {
+      this.accessoryOverlay = this.add.sprite(F.PIGEON_X, F.PIGEON_Y + 10, `${activeAcc}-failure`).setScale(0.25);
+      this.accessoryOverlay.play(`anim-acc-${activeAcc}-failure`);
+    }
+
     const stats = [
         { label: "WPM", val: r.wpm },
         { label: "ACC", val: `${r.accuracy}%` },
@@ -177,31 +205,17 @@ export default class resultsScene extends Phaser.Scene {
         this.add.text(x, F.STAT_Y + 25, s.val, { fontFamily: FONT_FAMILY, fontSize: "22px", color: "#fff", fontStyle: "bold" }).setOrigin(0.5);
     });
 
-    // Shrunk down to 0.3 layout scale profiles
     this._imageBtn(CX - 100, F.BTN_Y, "btn-try-again", () => this.scene.start("gameScene")).setScale(0.3);
     this._imageBtn(CX + 100, F.BTN_Y, "btn-go-home", () => this.scene.start("menuScene")).setScale(0.3);
   }
 
-  // --- HELPERS ---
-
-  // ── FIXED STAT ROW: Added fontStyle and stroke to labels and values to look thicker ──
   _statRow(lx, rx, y, label, value) {
     this.add.text(lx, y, label, {
-      fontFamily: FONT_FAMILY, 
-      fontSize: "20px", 
-      color: THEME_COLOR,
-      fontStyle: "bold",
-      stroke: THEME_COLOR,
-      strokeThickness: 0.5 // Subtle stroke multiplier to make label heavier
+      fontFamily: FONT_FAMILY, fontSize: "20px", color: THEME_COLOR, fontStyle: "bold", stroke: THEME_COLOR, strokeThickness: 0.5
     }).setOrigin(0, 0.5);
 
     this.add.text(rx, y, value, {
-      fontFamily: FONT_FAMILY, 
-      fontSize: "20px", 
-      color: THEME_COLOR, 
-      fontStyle: "bold",
-      stroke: THEME_COLOR,
-      strokeThickness: 0.8 // Slightly thicker stroke to make user numbers pop!
+      fontFamily: FONT_FAMILY, fontSize: "20px", color: THEME_COLOR, fontStyle: "bold", stroke: THEME_COLOR, strokeThickness: 0.8
     }).setOrigin(1, 0.5);
   }
 
@@ -209,7 +223,10 @@ export default class resultsScene extends Phaser.Scene {
     const btn = this.add.image(x, y, key).setInteractive({ useHandCursor: true });
     btn.on("pointerover", () => btn.setAlpha(0.8));
     btn.on("pointerout", () => btn.setAlpha(1));
-    btn.on("pointerdown", callback);
+    btn.on("pointerdown", () => {
+      this.sound.play("click", { volume: 0.2 });
+      callback();
+    });
     return btn;
   }
 
@@ -225,6 +242,11 @@ export default class resultsScene extends Phaser.Scene {
       }, { headers: authHeader() });
 
       const bal = res.data.new_balances;
+      
+      // Keep state values synchronized across types
+      gameState.coins = bal.coinBalance;
+      gameState.coinBalance = bal.coinBalance;
+      
       updateStats({
         ...getStats(),
         xpTotal: bal.xpTotal,

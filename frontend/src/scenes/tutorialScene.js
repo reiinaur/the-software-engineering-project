@@ -1,70 +1,65 @@
 import Phaser from "phaser";
+import axios from "axios";
 import { GW, GH, CX, CY, FONT, colours, HEX, px, py } from "../utils/scale.js";
 import { gameState } from "../utils/gameState.js";
-import { renderMascot } from "../utils/shopUtils.js";
+import { authHeader, getStats, updateStats } from "../utils/auth.js";
 
-// Mascot position in your tutorial background
-const MASCOT_X     = px(78);
-const MASCOT_Y     = py(52);
-const MASCOT_SCALE = 0.24;
+// --- HEADER & MENUBAR POSITIONING (mirrored from gameScene) ---
+const TIMER_X     = px(13);
+const TIMER_Y     = py(12);
 
-// Speech bubble position
-const BUBBLE_X = px(54);
-const BUBBLE_Y = py(14);
-const BUBBLE_W = px(40);
-const BUBBLE_H = py(18);
+const WPM_X       = px(32);
+const WPM_Y       = py(12);
+const ACC_X       = px(59);
+const ACC_Y       = py(12);
 
-// Typing passage area (centred in the left/middle area of your background)
-const PASSAGE_X    = px(7);
-const PASSAGE_Y    = py(52);
-const PASSAGE_W    = px(40);
-const CHAR_SIZE    = 34;   // bigger than game scene — easier to read for tutorial
-const LINE_H       = 56;
+// --- TYPING PAPER DIMENSIONS (identical to gameScene) ---
+const DOC_LEFT   = px(10);
+const DOC_TOP    = py(22);
+const DOC_RIGHT  = px(55);
+const CHAR_SIZE  = 36;
+const LINE_H     = 48;
 
-// Step progress indicator
-const STEP_IND_X = CX;
-const STEP_IND_Y = py(91);
+// --- PIGEON ART ASSETS & COORDINATES (identical to gameScene) ---
+const PIGEON_X   = px(82);
+const PIGEON_Y   = py(63);
 
-// "Go to Newsroom" button position (last step)
-const BTN_NEWSROOM_X = CX;
-const BTN_NEWSROOM_Y = py(86);
+const BUBBLE_X   = px(79.4);
+const BUBBLE_Y   = py(23.2);
 
+// --- TUTORIAL STEPS ---
+// passage: null = "press any key" intro slide; hint shown in bubble only
 const STEPS = [
   {
-    mood:    "tutorial",
-    speech:  "Hi! I'm your editor.\nWelcome to The Typing Times!",
+    mood:    "calm",
+    speech:  "Hi! I'm your editor.\nWelcome to The Typing Times!\n\nPress any key to continue →",
     passage: null,
-    hint:    "Press any key to continue →",
   },
   {
-    mood:    "tutorial",
-    speech:  "Let's start with your left hand.\nType the home row keys:",
+    mood:    "calm",
+    speech:  "Start with your left hand.\nType the home row keys:",
     passage: "asdf",
-    hint:    "Type what you see below:",
   },
   {
-    mood:    "tutorial",
-    speech:  "Great! Now your right hand.\nThese keys sit under your fingers:",
+    mood:    "calm",
+    speech:  "Now your right hand.\nThese keys sit under your fingers:",
     passage: "jkl;",
-    hint:    "Type what you see below:",
   },
   {
-    mood:    "tutorial",
-    speech:  "Now let's try some real words.\nTake your time!",
+    mood:    "calm",
+    speech:  "Let's try some real words.\nTake your time!",
     passage: "the and for",
-    hint:    "Type what you see below:",
   },
   {
     mood:    "calm",
-    speech:  "Excellent! One sentence and\nyou're ready for the newsroom.",
+    speech:  "One sentence and you're\nready for the newsroom!",
     passage: "type quickly and accurately",
-    hint:    "Type what you see below:",
   },
   {
     mood:    "calm",
-    speech:  "You did it! Head to the newsroom\nfor your first assignment.",
-    passage: null,
-    hint:    null,  // null hint = show "Go to Newsroom" button
+    speech:  "You did it!\nType the phrase below\nto head to the newsroom.",
+    passage: "go to newsroom", // 🟢 Replaced interactive button with actual typing string criteria
+    isFinal: true,
   },
 ];
 
@@ -72,169 +67,189 @@ export default class tutorialScene extends Phaser.Scene {
   constructor() { super("tutorialScene"); }
 
   create() {
-    this.cameras.main.setBackgroundColor("#ffffff");
-    this.add.image(CX, CY, "ui-tutorial-bg");
+    // 1. Core Layout — identical background setup to gameScene
+    this.cameras.main.setBackgroundColor('#e6ba88'); // always default theme in tutorial
 
-    this._stepIndex     = 0;
-    this._charIndex     = 0;
-    this._charTexts     = [];
-    this._mascotLayers  = [];
-    this._stepObjects   = [];   // track objects from current step so we can destroy on advance
+    this.add.image(px(32), py(86), "paper").setScale(0.8);
 
-    this._buildStep(0);
-  }
+    // 2. Header UI — same as gameScene but timer shows "TUTORIAL" and stats are static
+    this._timerText = this.add.text(TIMER_X, TIMER_Y, "TUTORIAL", {
+      fontFamily: "'Courier New', monospace", fontSize: "24px", color: "#292929", fontStyle: "bold"
+    }).setOrigin(1, 0.5);
 
-  _buildStep(stepIdx) {
-    // Destroy objects from the previous step
-    this._stepObjects.forEach((o) => o?.destroy());
-    this._stepObjects = [];
+    this._stepText = this.add.text(WPM_X, WPM_Y, "STEP 1", {
+      fontFamily: "'Courier New', monospace", fontSize: "24px", color: "#292929", fontStyle: "bold"
+    }).setOrigin(0.5,0.5);
 
-    const step = STEPS[stepIdx];
-    this._charIndex = 0;
-    this._charTexts = [];
+    this._hintText = this.add.text(ACC_X, ACC_Y, "", {
+      fontFamily: "'Courier New', monospace", fontSize: "24px", color: "#292929", fontStyle: "bold"
+    }).setOrigin(1,0.5);
 
-    // ── Mascot (re-render per step for mood changes) ───────────────
-    this._mascotLayers.forEach((l) => l?.destroy());
-    this._mascotLayers = renderMascot(this, MASCOT_X, MASCOT_Y, MASCOT_SCALE, step.mood);
-    this._mascotLayers.forEach((l) => this._stepObjects.push(l));
+    // 4. Pigeon setup — identical to gameScene
+    this._createPigeonAnimations();
 
-    // ── Speech bubble ─────────────────────────────────────────────
-    const bubbleGfx = this.add.graphics();
-    this._stepObjects.push(bubbleGfx);
-    bubbleGfx.fillStyle(0xffffff);
-    bubbleGfx.fillRoundedRect(BUBBLE_X, BUBBLE_Y, BUBBLE_W, BUBBLE_H, 14);
-    bubbleGfx.lineStyle(2, 0x333333);
-    bubbleGfx.strokeRoundedRect(BUBBLE_X, BUBBLE_Y, BUBBLE_W, BUBBLE_H, 14);
-    // Bubble tail
-    const tx = BUBBLE_X + 60;
-    bubbleGfx.fillTriangle(tx, BUBBLE_Y + BUBBLE_H, tx + 22, BUBBLE_Y + BUBBLE_H, tx - 8, BUBBLE_Y + BUBBLE_H + 22);
+    this.pigeonSprite = this.add.sprite(PIGEON_X, PIGEON_Y, "pigeon-tutorial").setScale(0.4);
+    this.pigeonSprite.play("anim-pigeon-tutorial");
 
-    const speechText = this.add.text(
-      BUBBLE_X + BUBBLE_W / 2,
-      BUBBLE_Y + BUBBLE_H / 2,
-      step.speech, {
-      fontFamily: "Georgia, serif",
-      fontSize:   FONT.sm,
-      color:      colours.dark,
-      align:      "center",
-      wordWrap:   { width: BUBBLE_W - 40 },
-    }).setOrigin(0.5);
-    this._stepObjects.push(speechText);
-
-    // ── Step indicator ("Step 2 of 5") ────────────────────────────
-    const maxTypingSteps = STEPS.filter((s) => s.passage !== null).length;
-    const currentTyping  = STEPS.slice(0, stepIdx + 1).filter((s) => s.passage !== null).length;
-    if (step.passage !== null) {
-      const stepInd = this.add.text(STEP_IND_X, STEP_IND_Y,
-        `Step ${currentTyping} of ${maxTypingSteps}`, {
-        fontFamily: "Arial", fontSize: FONT.xs, color: colours.muted
-      }).setOrigin(0.5);
-      this._stepObjects.push(stepInd);
+    // Accessory overlay (respects whatever the player has equipped)
+    this.accessorySprite = null;
+    this.currentAcc = gameState.equipped?.accessory || "none";
+    if (this.currentAcc !== "none" && this.textures.exists(`${this.currentAcc}-calm`)) {
+      this.accessorySprite = this.add.sprite(PIGEON_X, PIGEON_Y, `${this.currentAcc}-calm`).setScale(0.4);
+      this.accessorySprite.play(`anim-acc-${this.currentAcc}-calm`);
     }
 
-    if (step.passage === null && step.hint === null) {
-      // ── Final step: show "Go to Newsroom" button ─────────────────
-      const btn = this.add.text(BTN_NEWSROOM_X, BTN_NEWSROOM_Y,
-        "→  Go to Newsroom", {
-        fontFamily: "Georgia, serif",
-        fontSize:   FONT.lg,
-        color:      colours.dark,
-      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      btn.on("pointerover",  () => btn.setStyle({ color: colours.muted }));
-      btn.on("pointerout",   () => btn.setStyle({ color: colours.dark }));
-      btn.on("pointerdown",  () => this.scene.start("levelSelectScene"));
-      this._stepObjects.push(btn);
+    // 5. Speech bubble — same position as gameScene bubble
+    this.speechBubble = this.add.image(px(79), py(25), "bubble").setScale(0.15);
 
-      // No keyboard handling for this step
-      if (this._keyListener) this.input.keyboard.off("keydown", this._keyListener);
-      return;
-    }
-
-    if (step.passage === null) {
-      // ── "Press any key" step ──────────────────────────────────────
-      const hintText = this.add.text(CX, py(82), step.hint ?? "Press any key to continue →", {
-        fontFamily: "Arial", fontSize: FONT.xs, color: colours.muted
-      }).setOrigin(0.5);
-      this._stepObjects.push(hintText);
-
-      // Blink hint
-      this.tweens.add({
-        targets: hintText, alpha: 0, duration: 600, yoyo: true, repeat: -1
-      });
-
-      this._setKeyListener(() => this._nextStep());
-      return;
-    }
-
-    // ── Typing step ───────────────────────────────────────────────
-    if (step.hint) {
-      const hint = this.add.text(PASSAGE_X, PASSAGE_Y - py(6), step.hint, {
-        fontFamily: "Arial", fontSize: FONT.xs, color: colours.muted
-      });
-      this._stepObjects.push(hint);
-    }
-
-    // Render passage characters
-    let cx = PASSAGE_X, cy = PASSAGE_Y;
-    const passage = step.passage;
-
-    passage.split("").forEach((ch) => {
-      const probe = this.add.text(0, -500, ch, {
-        fontFamily: "'Courier New', monospace", fontSize: `${CHAR_SIZE}px`
-      });
-      const chW = probe.width;
-      probe.destroy();
-
-      if (cx + chW > PASSAGE_X + PASSAGE_W && ch !== " ") { cx = PASSAGE_X; cy += LINE_H; }
-
-      const t = this.add.text(cx, cy, ch, {
-        fontFamily: "'Courier New', monospace",
-        fontSize:   `${CHAR_SIZE}px`,
-        color:      "#bbbbbb",
-      });
-      this._charTexts.push(t);
-      this._stepObjects.push(t);
-      cx += t.width;
-    });
-
-    // Cursor
-    this._cursor = this.add.rectangle(0, 0, 3, CHAR_SIZE + 4, HEX.accent);
-    this._stepObjects.push(this._cursor);
-    this._updateCursor();
-    if (this._blinkTimer) this._blinkTimer.destroy();
-    this._blinkTimer = this.time.addEvent({
+    // 6. Cursor blink timer
+    this._cursorVisible = true;
+    this.time.addEvent({
       delay: 500, loop: true,
       callback: () => { if (this._cursor) this._cursor.setVisible(!this._cursor.visible); }
     });
 
-    // Key handler for typing
-    this._setKeyListener((event) => {
-      if (event.key.length !== 1) return;
+    // 7. Keyboard listener
+    this._keyListener = null;
+    this.input.keyboard.on("keydown", (e) => this._onKey(e));
 
-      const expected = passage[this._charIndex];
-      const isMatch  = event.key === expected;
+    // 8. Per-step state
+    this._stepIndex  = 0;
+    this._charIndex  = 0;
+    this._charTexts  = [];
+    this._stepObjs   = []; // objects that get destroyed between steps
+    this._cursor     = null;
 
-      if (isMatch) {
-        this._charTexts[this._charIndex].setStyle({ color: "#1a1a2e", fontStyle: "bold" });
-        this._charIndex++;
-        this._updateCursor();
+    this._buildStep(0);
+  }
 
-        if (this._charIndex >= passage.length) {
-          // Short success pause, then advance
-          if (this._keyListener) this.input.keyboard.off("keydown", this._keyListener);
-          this.time.delayedCall(500, () => this._nextStep());
-        }
+  // ── Build a single step ──────────────────────────────────────────────────────
+
+  _buildStep(idx) {
+    // Destroy previous step's paper-area objects
+    this._stepObjs.forEach((o) => o?.destroy());
+    this._stepObjs = [];
+    this._charTexts = [];
+    this._charIndex = 0;
+
+    const step = STEPS[idx];
+    const typingSteps = STEPS.filter((s) => s.passage !== null);
+    const typingIdx   = STEPS.slice(0, idx + 1).filter((s) => s.passage !== null).length;
+
+    // Update header layout profiles
+    if (step.passage !== null) {
+      this._stepText.setText(`STEP ${typingIdx} OF ${typingSteps.length}`);
+      this._hintText.setText(step.isFinal ? "FINAL STEP" : "TYPE BELOW");
+    } else {
+      this._stepText.setText("");
+      this._hintText.setText("PRESS ANY KEY");
+    }
+
+    // Replace speech bubble text (destroy old one first)
+    if (this._speechText) this._speechText.destroy();
+    
+    this._speechText = this.add.text(BUBBLE_X, BUBBLE_Y, step.speech, {
+      fontFamily: "'Courier New', monospace",
+      fontSize: "18px",
+      fontStyle: "bold",
+      color: colours.main,
+      align: "center",
+      wordWrap: { width: px(10) },
+    }).setOrigin(0.5, 0.3);
+    this._stepObjs.push(this._speechText);
+
+    // ── Intro / "press any key" slide ───────────────────────────
+    if (step.passage === null) {
+      // No typing area — just wait for any key
+      return;
+    }
+
+    // ── Unified Text Passage Generator (Handles Final Step now too) ───
+    const passage = step.passage;
+    let cx = DOC_LEFT, cy = DOC_TOP;
+
+    const words = passage.split(/(\s+)/);
+    words.forEach((word) => {
+      if (word === "") return;
+
+      if (/^\s+$/.test(word)) {
+        word.split("").forEach((ch) => {
+          const t = this.add.text(cx, cy, ch, {
+            fontFamily: "'Courier New', monospace", fontSize: `${CHAR_SIZE}px`, fontStyle: "bold", color: "#a0a0a0",
+          });
+          this._charTexts.push(t);
+          this._stepObjs.push(t);
+          cx += t.width;
+        });
       } else {
-        // Wrong key — flash the current character red briefly, don't advance cursor
-        this._charTexts[this._charIndex].setStyle({ color: "#e94560" });
-        this.time.delayedCall(180, () => {
-          if (this._charTexts[this._charIndex]) {
-            this._charTexts[this._charIndex].setStyle({ color: "#bbbbbb" });
-          }
+        let wordWidth = 0;
+        word.split("").forEach((ch) => {
+          const probe = this.add.text(0, -500, ch, {
+            fontFamily: "'Courier New', monospace", fontStyle: "bold", fontSize: `${CHAR_SIZE}px`
+          });
+          wordWidth += probe.width;
+          probe.destroy();
+        });
+
+        if (cx + wordWidth > DOC_RIGHT) { cx = DOC_LEFT; cy += LINE_H; }
+
+        word.split("").forEach((ch) => {
+          const t = this.add.text(cx, cy, ch, {
+            fontFamily: "'Courier New', monospace", fontStyle: "bold", fontSize: `${CHAR_SIZE}px`, color: "#a0a0a0",
+          });
+          this._charTexts.push(t);
+          this._stepObjs.push(t);
+          cx += t.width;
         });
       }
     });
+
+    // Cursor positioning
+    if (this._cursor) this._cursor.destroy();
+    this._cursor = this.add.rectangle(0, 0, 2, CHAR_SIZE + 4, HEX.muted || 0x7767a9);
+    this._stepObjs.push(this._cursor);
+    this._updateCursor();
   }
+
+  // ── Key routing ──────────────────────────────────────────────────────────────
+
+  _onKey(event) {
+    const step = STEPS[this._stepIndex];
+
+    // Intro slide: any key advances
+    if (step.passage === null) {
+      this._nextStep();
+      return;
+    }
+
+    // Typing step validation context
+    if (event.key.length !== 1) return;
+
+    const passage  = step.passage;
+    const expected = passage[this._charIndex];
+    const isMatch  = event.key === expected;
+
+    if (isMatch) {
+      this._charTexts[this._charIndex].setStyle({ color: "#5c5284", fontStyle: "bold" });
+      this._charIndex++;
+      this._updateCursor();
+
+      if (this._charIndex >= passage.length) {
+        // Brief pause then advance to completion route cleanly
+        this.time.delayedCall(400, () => this._nextStep());
+      }
+    } else {
+      // Wrong key — flash red then back to grey
+      this._charTexts[this._charIndex].setStyle({ color: colours.accent, fontStyle: "bold" });
+      this.time.delayedCall(180, () => {
+        if (this._charTexts[this._charIndex]) {
+          this._charTexts[this._charIndex].setStyle({ color: "#a0a0a0", fontStyle: "bold" });
+        }
+      });
+    }
+  }
+
+  // ── Cursor position (identical logic to gameScene) ───────────────────────────
 
   _updateCursor() {
     if (!this._cursor) return;
@@ -242,27 +257,90 @@ export default class tutorialScene extends Phaser.Scene {
       const t = this._charTexts[this._charIndex];
       this._cursor.setPosition(t.x - 1, t.y + t.height / 2).setVisible(true);
     } else {
-      this._cursor.setVisible(false);
+      this._cursor?.setVisible(false);
     }
   }
+
+  // ── Step progression ─────────────────────────────────────────────────────────
 
   _nextStep() {
     this._stepIndex++;
     if (this._stepIndex < STEPS.length) {
       this._buildStep(this._stepIndex);
     } else {
-      this.scene.start("levelSelectScene");
+      this._completeTutorial();
     }
   }
 
-  _setKeyListener(fn) {
-    if (this._keyListener) this.input.keyboard.off("keydown", this._keyListener);
-    this._keyListener = fn;
-    this.input.keyboard.on("keydown", fn);
+  // ── Pigeon animations (identical to gameScene) ───────────────────────────────
+
+  _createPigeonAnimations() {
+    const anims = [
+      { key: "anim-pigeon-tutorial",   asset: "pigeon-tutorial"}
+    ];
+
+    anims.forEach(anim => {
+      if (!this.anims.exists(anim.key)) {
+        this.anims.create({
+          key: anim.key,
+          frames: this.anims.generateFrameNumbers(anim.asset, { start: 0, end: 1 }),
+          frameRate: 2,
+          repeat: -1
+        });
+      }
+    });
+
+    const activeAcc = gameState.equipped?.accessory || "none";
+    if (activeAcc !== "none") {
+      ["calm", "warning", "deadline", "failure"].forEach(phase => {
+        const accKey  = `anim-acc-${activeAcc}-${phase}`;
+        const assetKey = `${activeAcc}-${phase}`;
+        if (!this.anims.exists(accKey) && this.textures.exists(assetKey)) {
+          this.anims.create({
+            key: accKey,
+            frames: this.anims.generateFrameNumbers(assetKey, { start: 0, end: 1 }),
+            frameRate: 2,
+            repeat: -1
+          });
+        }
+      });
+    }
+  }
+
+  // ── Tutorial completion — grant XP then go to level select ───────────────────
+
+  async _completeTutorial() {
+    try {
+      const res = await axios.post("/api/stats/submit-score", {
+        levelNumber:  1,
+        wpm:          0,
+        accuracy:     100,
+        xpGain:       100,   // exactly enough to reach rank 2 threshold
+        coinsEarned:  10,
+        deadlineMet:  true,
+      }, { headers: authHeader() });
+
+      const bal = res.data.new_balances;
+      gameState.rankLevel   = res.data.newRank;
+      gameState.xpTotal     = bal.xpTotal;
+      gameState.coinBalance = bal.coinBalance;
+      gameState.finLevels   = bal.unlockedLevels;
+      gameState.PBs         = bal.PBs;
+
+      updateStats({
+        ...getStats(),
+        xpTotal:     bal.xpTotal,
+        coinBalance: bal.coinBalance,
+        finLevels:   bal.unlockedLevels,
+        PBs:         bal.PBs,
+      });
+    } catch (e) {
+      console.warn("Tutorial score submit failed", e);
+    }
+    this.scene.start("levelSelectScene");
   }
 
   shutdown() {
-    if (this._keyListener) this.input.keyboard.off("keydown", this._keyListener);
-    if (this._blinkTimer)  this._blinkTimer.destroy();
+    this.input.keyboard.off("keydown");
   }
 }

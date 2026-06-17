@@ -37,10 +37,10 @@ export default class menuScene extends Phaser.Scene {
     logo.setScale(0.23);
 
     if (isLoggedIn()) {
-      ``;
       const user = getUser();
       const stats = getStats();
       const shop = getShopState();
+      
       Object.assign(gameState, {
         userId: user.userId,
         name: user.name,
@@ -61,6 +61,13 @@ export default class menuScene extends Phaser.Scene {
           screenTheme: null,
         },
       });
+
+      // 🟢 Fix: Ensure flat lookup arrays are initialized for shop validation lists
+      gameState.ownedItems = [
+        ...(gameState.shopOwned.accessories || []),
+        ...(gameState.shopOwned.screenTheme || [])
+      ];
+
       this._drawLoggedInUI();
     } else {
       this._drawLoggedOutUI();
@@ -73,9 +80,10 @@ export default class menuScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setDepth(10)
       .setInteractive({ useHandCursor: true })
-      .on("pointerdown", () =>
-        this.scene.start("loginScene", { mode: "signup" }),
-      );
+      .on("pointerdown", () => {
+        this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+        this.scene.start("loginScene", { mode: "signup" });
+      });
 
     btnStartNew.on("pointerover", function () {
       this.setScale(1.05);
@@ -90,9 +98,10 @@ export default class menuScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setDepth(10)
       .setInteractive({ useHandCursor: true })
-      .on("pointerdown", () =>
-        this.scene.start("loginScene", { mode: "login" }),
-      );
+      .on("pointerdown", () => {
+        this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+        this.scene.start("loginScene", { mode: "login" });
+      });
 
     btnLogin.on("pointerover", function () {
       this.setScale(1.05);
@@ -139,15 +148,17 @@ export default class menuScene extends Phaser.Scene {
     gfx.fillRoundedRect(barX, barY - barH / 2, barW * progress, barH, 5);
 
     // 4. CONDITIONAL ADMIN ICON
-    // Instead of drawing a vector circle/body, we look for the admin role here:
     if (gameState.role === "admin") {
       this.add
-        .image(barX + barW + px(1), barY, "icon-admin") // Placed dynamically to the right of the XP bar
+        .image(barX + barW + px(1), barY, "icon-admin") 
         .setScale(0.03)
-        .setOrigin(0, 0.5) // Center vertically with the text and bar
-        .setDepth(10)      // Keeps it on top of the background
+        .setOrigin(0, 0.5) 
+        .setDepth(10)      
         .setInteractive({ useHandCursor: true })
-        .on("pointerdown", () => this.scene.start("adminScene"));
+        .on("pointerdown", () => {
+          this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+          this.scene.start("adminScene");
+        });
     }
 
     // main menu buttons
@@ -157,9 +168,10 @@ export default class menuScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setDepth(10)
       .setInteractive({ useHandCursor: true })
-      .on("pointerdown", () =>
-        this.scene.start("levelSelectScene"),
-      );
+      .on("pointerdown", () => {
+        this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+        this.scene.start("levelSelectScene");
+      });
 
     btnContinue.on("pointerover", function () {
       this.setScale(1.05);
@@ -175,9 +187,10 @@ export default class menuScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setDepth(10)
       .setInteractive({ useHandCursor: true })
-      .on("pointerdown", () =>
-        this.scene.start("shopScene"),
-      );
+      .on("pointerdown", () => {
+        this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+        this.scene.start("shopScene");
+      });
 
     btnShop.on("pointerover", function () {
       this.setScale(1.05);
@@ -193,24 +206,22 @@ export default class menuScene extends Phaser.Scene {
       .setOrigin(0, 0)
       .setDepth(10)
       .setInteractive({ useHandCursor: true })
-      .on(
-        "pointerdown",
-        () => {
-          clearSession();
-          Object.assign(gameState, {
-            userId: null,
-            name: null,
-            role: null,
-            rankLevel: 1,
-            xpTotal: 0,
-            coinBalance: 0,
-            finLevels: [],
-            PBs: {},
-          });
-          this.scene.restart();
-        },
-        colours.muted,
-      );
+      .on("pointerdown", () => {
+        this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+        clearSession();
+        Object.assign(gameState, {
+          userId: null,
+          name: null,
+          role: null,
+          rankLevel: 1,
+          xpTotal: 0,
+          coinBalance: 0,
+          finLevels: [],
+          PBs: {},
+          ownedItems: []
+        });
+        this.scene.restart();
+      }); // 🟢 Fix: Removed trailing context argument error from parameter tail block
 
     btnLogout.on("pointerover", function () {
       this.setScale(1.05);
@@ -232,6 +243,9 @@ export default class menuScene extends Phaser.Scene {
 
     t.on("pointerover", () => t.setStyle({ color: colours.muted }));
     t.on("pointerout", () => t.setStyle({ color }));
-    t.on("pointerdown", cb);
+    t.on("pointerdown", () => {
+      this.sound.play("click", { volume: 0.2 }); // 🟢 Added Sound
+      cb();
+    });
   }
 }
